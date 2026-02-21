@@ -279,7 +279,7 @@ class StudentCheckInPage extends StatelessWidget {
   }
 }
 
-/// Manual Input Page - Updated to follow the DESIGN
+/// Manual Input Page - Precise Design Update
 class ManualInputPage extends StatelessWidget {
   const ManualInputPage({super.key});
 
@@ -299,13 +299,12 @@ class ManualInputPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo from the design
               Image.asset(
                 'assets/wvsu_logo.png',
                 width: 130,
               ),
               const SizedBox(height: 40),
-              // Outer light-blue container
+              // Outer container
               Container(
                 width: 900,
                 padding: const EdgeInsets.all(40),
@@ -314,8 +313,8 @@ class ManualInputPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(40),
                 ),
                 child: Container(
-                  // Inner darker-blue container
-                  padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 50),
+                  // Inner container
+                  padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 50),
                   decoration: BoxDecoration(
                     color: const Color(0xFFCFD9E8),
                     borderRadius: BorderRadius.circular(40),
@@ -354,8 +353,32 @@ class ManualInputPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 60),
-                      // Help text at the bottom
+                      const SizedBox(height: 30),
+                      // Submit Button
+                      ElevatedButton(
+                        onPressed: () {
+                          // TODO: Handle Manual ID Submission logic
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 51, 133, 210),
+                          padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 5,
+                        ),
+                        child: const Text(
+                          "SUBMIT",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 50),
+                      // Footer help text
                       const Text(
                         "Need help? Reach out to the service desk.",
                         style: TextStyle(
@@ -369,7 +392,7 @@ class ManualInputPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
-              // Back Button (outside the design card)
+              // Navigation back button
               TextButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -486,19 +509,15 @@ class AdminLoginPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Row(
+                      const Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               _RememberMeCheckbox(),
                               SizedBox(width: 5),
                               Text("Remember me"),
                             ],
-                          ),
-                          TextButton(
-                            onPressed: () {},
-                            child: const Text("Forgot Password?"),
                           ),
                         ],
                       ),
@@ -550,8 +569,9 @@ class AdminLoginPage extends StatelessWidget {
   }
 }
 
+/// Custom checkbox widget
 class _RememberMeCheckbox extends StatefulWidget {
-  const _RememberMeCheckbox({super.key});
+  const _RememberMeCheckbox();
 
   @override
   State<_RememberMeCheckbox> createState() => _RememberMeCheckboxState();
