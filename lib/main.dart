@@ -4,7 +4,7 @@ void main() {
   runApp(const MyApp());
 }
 
-/// The root widget of the app
+/// Root widget of the app
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -13,14 +13,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Inter', // Set Inter font globally
+        fontFamily: 'Inter',
       ),
       home: const AttendancePortal(),
     );
   }
 }
 
-/// Main Attendance Portal page with Student and Admin options
+/// Main Attendance Portal page
 class AttendancePortal extends StatelessWidget {
   const AttendancePortal({super.key});
 
@@ -32,24 +32,21 @@ class AttendancePortal extends StatelessWidget {
         height: double.infinity,
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/blue_bg.png'), // Background image
+            image: AssetImage('assets/blue_bg.png'),
             fit: BoxFit.cover,
           ),
         ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100), // Max width for large screens
+            constraints: const BoxConstraints(maxWidth: 1100),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // App logo
                 Image.asset(
                   'assets/wvsu_logo.png',
                   width: 130,
                 ),
                 const SizedBox(height: 30),
-                
-                // Title text
                 const Text(
                   'WVSU Library Attendance',
                   textAlign: TextAlign.center,
@@ -61,8 +58,6 @@ class AttendancePortal extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 60),
-
-                // Portal selection cards
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -72,7 +67,14 @@ class AttendancePortal extends StatelessWidget {
                       title: "Student Portal",
                       subtitle: "Display student info for sign in and sign out",
                       buttonText: "Go to student check-in →",
-                      onPressed: () {}, // TODO: Add student portal navigation
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StudentCheckInPage(),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 50),
                     _buildPortalCard(
@@ -82,7 +84,6 @@ class AttendancePortal extends StatelessWidget {
                       subtitle: "Access administrative tools and analytics",
                       buttonText: "Login as Admin →",
                       onPressed: () {
-                        // Navigate to Admin Login page
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -100,7 +101,6 @@ class AttendancePortal extends StatelessWidget {
     );
   }
 
-  /// Helper method to build a portal card
   static Widget _buildPortalCard({
     required BuildContext context,
     required IconData icon,
@@ -113,7 +113,7 @@ class AttendancePortal extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95), // Card background with opacity
+        color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -166,6 +166,233 @@ class AttendancePortal extends StatelessWidget {
   }
 }
 
+/// Student Check-In Page (RFID Scan Page)
+class StudentCheckInPage extends StatelessWidget {
+  const StudentCheckInPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/blue_bg.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/wvsu_logo.png',
+                width: 130,
+              ),
+              const SizedBox(height: 40),
+              Container(
+                width: 900,
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD6DEE3),
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(50),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB9C2D8),
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Scan Your RFID Card to Enter",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      const Text(
+                        "Hold your card near the scanner.\nEnsure your card is active and not expired.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 40),
+                      const Text(
+                        "No ID? Please enter your details manually below.",
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 15),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ManualInputPage(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromARGB(255, 51, 133, 210),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Manual Input",
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        label: const Text("Back to Portal",
+                            style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromARGB(255, 51, 133, 210),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Manual Input Page - Updated to follow the DESIGN
+class ManualInputPage extends StatelessWidget {
+  const ManualInputPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/blue_bg.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo from the design
+              Image.asset(
+                'assets/wvsu_logo.png',
+                width: 130,
+              ),
+              const SizedBox(height: 40),
+              // Outer light-blue container
+              Container(
+                width: 900,
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3E9F2),
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: Container(
+                  // Inner darker-blue container
+                  padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 50),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCFD9E8),
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Enter Your Student ID",
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 50),
+                      // Pill-shaped text field
+                      SizedBox(
+                        width: 500,
+                        child: TextField(
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 18),
+                          decoration: InputDecoration(
+                            hintText: "Enter Student ID (e.g., 2021M1020)",
+                            hintStyle: TextStyle(
+                                color: Colors.black.withOpacity(0.3),
+                                fontSize: 16),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 30),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(100),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 60),
+                      // Help text at the bottom
+                      const Text(
+                        "Need help? Reach out to the service desk.",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Back Button (outside the design card)
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                label: const Text(
+                  "Back to Scanner",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.black26,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Admin Login Page
 class AdminLoginPage extends StatelessWidget {
   const AdminLoginPage({super.key});
@@ -178,7 +405,7 @@ class AdminLoginPage extends StatelessWidget {
         height: double.infinity,
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/blue_bg.png'), // Same blue background
+            image: AssetImage('assets/blue_bg.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -188,17 +415,15 @@ class AdminLoginPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo at the top
                 Image.asset(
                   'assets/wvsu_logo.png',
                   width: 130,
                 ),
                 const SizedBox(height: 30),
-
-                // Admin form container
                 Container(
                   width: 600,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 40),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 40),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.95),
                     borderRadius: BorderRadius.circular(20),
@@ -227,14 +452,13 @@ class AdminLoginPage extends StatelessWidget {
                             SizedBox(height: 5),
                             Text(
                               "Sign in to manage library attendance",
-                              style: TextStyle(fontSize: 14, color: Colors.black54),
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.black54),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 40),
-
-                      // Username input
                       const Text("Username"),
                       const SizedBox(height: 10),
                       TextField(
@@ -248,8 +472,6 @@ class AdminLoginPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 25),
-
-                      // Password input
                       const Text("Password"),
                       const SizedBox(height: 10),
                       TextField(
@@ -264,13 +486,11 @@ class AdminLoginPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Remember me & Forgot password row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               _RememberMeCheckbox(),
                               SizedBox(width: 5),
                               Text("Remember me"),
@@ -283,14 +503,13 @@ class AdminLoginPage extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 20),
-
-                      // Login button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {},
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 51, 133, 210),
+                            backgroundColor:
+                                const Color.fromARGB(255, 51, 133, 210),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -298,7 +517,10 @@ class AdminLoginPage extends StatelessWidget {
                           ),
                           child: const Text(
                             "Login as Admin",
-                            style: TextStyle(fontSize: 16, color: Color.fromARGB(255, 51, 133, 210)),
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -306,18 +528,17 @@ class AdminLoginPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Back button to return to portal
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text("Back to Portal"),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  label: const Text("Back to Portal",
+                      style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 51, 133, 210),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                   ),
                 ),
               ],
@@ -329,7 +550,6 @@ class AdminLoginPage extends StatelessWidget {
   }
 }
 
-/// Custom stateful checkbox widget
 class _RememberMeCheckbox extends StatefulWidget {
   const _RememberMeCheckbox({super.key});
 
