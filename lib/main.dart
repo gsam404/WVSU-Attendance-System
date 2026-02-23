@@ -279,7 +279,7 @@ class StudentCheckInPage extends StatelessWidget {
   }
 }
 
-/// Manual Input Page - Precise Design Update
+/// Manual Input Page 
 class ManualInputPage extends StatelessWidget {
   const ManualInputPage({super.key});
 
@@ -296,12 +296,14 @@ class ManualInputPage extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/wvsu_logo.png',
-                width: 130,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/wvsu_logo.png',
+                  width: 130,
               ),
               const SizedBox(height: 40),
               // Outer container
@@ -314,7 +316,7 @@ class ManualInputPage extends StatelessWidget {
                 ),
                 child: Container(
                   // Inner container
-                  padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 50),
+                  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 50),
                   decoration: BoxDecoration(
                     color: const Color(0xFFCFD9E8),
                     borderRadius: BorderRadius.circular(40),
@@ -406,6 +408,70 @@ class ManualInputPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                ),
+              ),
+            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+//studentDisplay_signIn page
+class StudentDisplaySignInPage extends StatelessWidget {
+  const StudentDisplaySignInPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/blue_bg.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/wvsu_logo.png',
+                width: 130,
+              ),
+              const SizedBox(height: 40),
+              const Text(
+                "Welcome to WVSU Library",
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "You have successfully signed in to the library.",
+                style: TextStyle(fontSize: 18, color: Colors.white70),
+              ),
+              const SizedBox(height: 50),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                label: const Text("Back to Scanner",
+                    style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      const Color.fromARGB(255, 51, 133, 210),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],
