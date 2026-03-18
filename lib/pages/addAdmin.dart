@@ -1,5 +1,3 @@
-import 'package:flutter/widgets.dart';
-import './sidebar.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePopUp extends StatelessWidget {

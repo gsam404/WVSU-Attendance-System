@@ -1,6 +1,11 @@
 
 import 'package:flutter/material.dart';
 
+//local imports
+import 'pages/addAdmin.dart';
+import 'pages/analyticspage.dart';
+import 'pages/attendancepage.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -16,7 +21,17 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Inter',
       ),
-      home: const AttendancePortal(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const AttendancePortal(),
+        '/student-checkin': (context) => const StudentCheckInPage(),
+        '/manual-input': (context) => const ManualInputPage(),
+        '/student-display': (context) => const StudentDisplaySignInPage(),
+        '/admin-login': (context) => const AdminLoginPage(),
+        '/analytics': (context) => const AnalyticsPage(),
+        '/attendance': (context) => const AttendancePage(),
+        '/admin': (context) => const PlaceHolderClass(),
+      },
     );
   }
 }
@@ -69,12 +84,7 @@ class AttendancePortal extends StatelessWidget {
                       subtitle: "Display student info for sign in and sign out",
                       buttonText: "Go to student check-in →",
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StudentCheckInPage(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, '/student-checkin');
                       },
                     ),
                     const SizedBox(width: 50),
@@ -85,11 +95,7 @@ class AttendancePortal extends StatelessWidget {
                       subtitle: "Access administrative tools and analytics",
                       buttonText: "Login as Admin →",
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const AdminLoginPage()),
-                        );
+                        Navigator.pushNamed(context, '/admin-login');
                       },
                     ),
                   ],
@@ -114,7 +120,7 @@ class AttendancePortal extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: Colors.white.withAlpha((0.95 * 255).round()),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -229,12 +235,7 @@ class StudentCheckInPage extends StatelessWidget {
                       const SizedBox(height: 15),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ManualInputPage(),
-                            ),
-                          );
+                          Navigator.pushNamed(context, '/manual-input');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
@@ -343,7 +344,7 @@ class ManualInputPage extends StatelessWidget {
                           decoration: InputDecoration(
                             hintText: "Enter Student ID (e.g., 2021M1020)",
                             hintStyle: TextStyle(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withAlpha((0.3 * 255).round()),
                                 fontSize: 16),
                             filled: true,
                             fillColor: Colors.white,
@@ -420,7 +421,7 @@ class ManualInputPage extends StatelessWidget {
   }
 }
 
-//studentDisplay_signIn page
+// StudentDisplaySignInPage
 class StudentDisplaySignInPage extends StatelessWidget {
   const StudentDisplaySignInPage({super.key});
 
@@ -435,47 +436,49 @@ class StudentDisplaySignInPage extends StatelessWidget {
             image: AssetImage('assets/blue_bg.png'),
             fit: BoxFit.cover,
           ),
-        ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/wvsu_logo.png',
-                width: 130,
-              ),
-              const SizedBox(height: 40),
-              const Text(
-                "Welcome to WVSU Library",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+        ), 
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/wvsu_logo.png',
+                  width: 130,
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "You have successfully signed in to the library.",
-                style: TextStyle(fontSize: 18, color: Colors.white70),
-              ),
-              const SizedBox(height: 50),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                label: const Text("Back to Scanner",
-                    style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      const Color.fromARGB(255, 51, 133, 210),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                const SizedBox(height: 40),
+                const Text(
+                  "Welcome to WVSU Library",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                const Text(
+                  "You have successfully signed in to the library.",
+                  style: TextStyle(fontSize: 18, color: Colors.white70),
+                ),
+                const SizedBox(height: 50),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  label: const Text(
+                    "Back to Scanner",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 51, 133, 210),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -484,8 +487,39 @@ class StudentDisplaySignInPage extends StatelessWidget {
 }
 
 /// Admin Login Page
-class AdminLoginPage extends StatelessWidget {
+class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
+
+  @override
+  State<AdminLoginPage> createState() => _AdminLoginPageState();
+}
+
+class _AdminLoginPageState extends State<AdminLoginPage> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _attemptLogin() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text.trim();
+
+      if (username == 'admin' && password == 'admin123') {
+        Navigator.pushReplacementNamed(context, '/attendance');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid username or password')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -510,107 +544,124 @@ class AdminLoginPage extends StatelessWidget {
                   width: 130,
                 ),
                 const SizedBox(height: 30),
-                Container(
-                  width: 600,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 50, vertical: 40),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 25,
-                        offset: Offset(0, 15),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              "Admin Portal",
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1A237E),
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    width: 600,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 50, vertical: 40),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha((0.95 * 255).round()),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 25,
+                          offset: Offset(0, 15),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "Admin Portal",
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1A237E),
+                                ),
                               ),
+                              SizedBox(height: 5),
+                              Text(
+                                "Sign in to manage library attendance",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.black54),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        const Text("Username"),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _usernameController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFE3E7F3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
-                            SizedBox(height: 5),
-                            Text(
-                              "Sign in to manage library attendance",
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.black54),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter username';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 25),
+                        const Text("Password"),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFE3E7F3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter password';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                _RememberMeCheckbox(),
+                                SizedBox(width: 5),
+                                Text("Remember me"),
+                              ],
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 40),
-                      const Text("Username"),
-                      const SizedBox(height: 10),
-                      TextField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFE3E7F3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      const Text("Password"),
-                      const SizedBox(height: 10),
-                      TextField(
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFE3E7F3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              _RememberMeCheckbox(),
-                              SizedBox(width: 5),
-                              Text("Remember me"),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color.fromARGB(255, 51, 133, 210),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _attemptLogin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color.fromARGB(255, 51, 133, 210),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              "Login as Admin",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600),
                             ),
                           ),
-                          child: const Text(
-                            "Login as Admin",
-                            style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600),
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),

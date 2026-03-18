@@ -61,8 +61,14 @@ flutter:
   assets:
     - assets/blue_bg.png
     - assets/wvsu_logo.png
-    -assets/
-
+    - assets/attendance.png
+    - assets/analytics.png
+    - assets/dashboard.png
+    - assets/imageTwo.png
+    - assets/logout.png
+    - assets/profile.png
+    - assets/Rectangle.jpg
+    - assets/useradd.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
