@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
+import 'services/api_service.dart'; // Make sure this file exists and has scanStudentID()
+import 'pages/addAdmin.dart'; // <--- ADDED THIS IMPORT FOR THE ADMIN DASHBOARD
 
 void main() {
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -168,113 +168,125 @@ class AttendancePortal extends StatelessWidget {
 }
 
 /// Student Check-In Page (RFID Scan Page)
-class StudentCheckInPage extends StatelessWidget {
+class StudentCheckInPage extends StatefulWidget {
   const StudentCheckInPage({super.key});
+
+  @override
+  State<StudentCheckInPage> createState() => _StudentCheckInPageState();
+}
+
+class _StudentCheckInPageState extends State<StudentCheckInPage> {
+  final FocusNode _rfidFocusNode = FocusNode();
+  final TextEditingController _rfidController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // This ensures the hidden field is always ready to receive the RFID scan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rfidFocusNode.requestFocus();
+    });
+  }
+
+  Future<void> _handleRFIDScan(String uid) async {
+    if (uid.isEmpty) return;
+
+    // Show a loading dialog or indicator if needed
+    try {
+      // We use the same scanStudentID function you used for manual input
+      // Assuming your database table uses the RFID UID as the identifier
+      var studentData = await scanStudentID(uid); 
+
+      if (studentData != null) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StudentDisplaySignInPage(
+                studentId: studentData['student_id']?.toString() ?? "N/A",
+                studentName: studentData['full_name']?.toString() ?? "Unknown",
+                program: studentData['program']?.toString() ?? "N/A",
+              ),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('RFID Tag not recognized!')),
+          );
+        }
+      }
+    } finally {
+      _rfidController.clear();
+      _rfidFocusNode.requestFocus(); // Keep listening for the next person
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/blue_bg.png'),
-            fit: BoxFit.cover,
+      body: Stack(
+        children: [
+          // 1. HIDDEN TEXT FIELD TO CATCH RFID INPUT
+          Opacity(
+            opacity: 0,
+            child: TextField(
+              focusNode: _rfidFocusNode,
+              controller: _rfidController,
+              autofocus: true,
+              onSubmitted: (value) => _handleRFIDScan(value),
+            ),
           ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/wvsu_logo.png',
-                width: 130,
+          
+          // 2. YOUR EXISTING UI
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/blue_bg.png'),
+                fit: BoxFit.cover,
               ),
-              const SizedBox(height: 40),
-              Container(
-                width: 900,
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD6DEE3),
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(50),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB9C2D8),
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Scan Your RFID Card to Enter",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/wvsu_logo.png', width: 130),
+                  const SizedBox(height: 40),
+                  Container(
+                    width: 900,
+                    padding: const EdgeInsets.all(40),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD6DEE3),
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.contactless, size: 80, color: Color(0xFF1A237E)), // Visual cue
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Scan Your RFID Card to Enter",
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      const SizedBox(height: 25),
-                      const Text(
-                        "Hold your card near the scanner.\nEnsure your card is active and not expired.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 40),
-                      const Text(
-                        "No ID? Please enter your details manually below.",
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 15),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
+                        const SizedBox(height: 40),
+                        ElevatedButton(
+                          onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const ManualInputPage(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromARGB(255, 51, 133, 210),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            MaterialPageRoute(builder: (context) => const ManualInputPage()),
                           ),
+                          child: const Text("No ID? Manual Input"),
                         ),
-                        child: const Text(
-                          "Manual Input",
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        label: const Text("Back to Portal",
-                            style: TextStyle(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromARGB(255, 51, 133, 210),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                        ),
-                      ),
-                    ],
+                        // ... rest of your buttons
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -364,29 +376,38 @@ class _ManualInputPageState extends State<ManualInputPage> {
                             if (enteredId.isNotEmpty) {
                               setState(() => _isLoading = true);
 
-                              // 1. Fetch data from XAMPP/MySQL 
-                              var studentData = await scanStudentID(enteredId);
+                              try {
+                                // Fetch data from XAMPP/MySQL via api_service.dart
+                                var studentData = await scanStudentID(enteredId);
 
-                              setState(() => _isLoading = false);
+                                setState(() => _isLoading = false);
 
-                              if (studentData != null) {
-                                if (context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => StudentDisplaySignInPage(
-                                        studentId: studentData['student_id'],
-                                        studentName: studentData['full_name'],
-                                        program: studentData['program'],
+                                if (studentData != null) {
+                                  if (context.mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => StudentDisplaySignInPage(
+                                          studentId: studentData['student_id']?.toString() ?? "N/A",
+                                          studentName: studentData['full_name']?.toString() ?? "Unknown",
+                                          program: studentData['program']?.toString() ?? "N/A",
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
+                                  _idController.clear();
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Error: Student ID not found in database!')),
+                                    );
+                                  }
                                 }
-                                _idController.clear();
-                              } else {
+                              } catch (e) {
+                                setState(() => _isLoading = false);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Error: Student ID not found in database!')),
+                                    SnackBar(content: Text('Connection Error: $e')),
                                   );
                                 }
                               }
@@ -398,7 +419,11 @@ class _ManualInputPageState extends State<ManualInputPage> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           ),
                           child: _isLoading 
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                              )
                             : const Text("SUBMIT", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
                         const SizedBox(height: 50),
@@ -591,7 +616,15 @@ class AdminLoginPage extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // <--- THIS IS THE FIX: Navigates to the Admin Dashboard
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AdminDashboard(), 
+                              ),
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromARGB(255, 51, 133, 210),
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -634,8 +667,4 @@ class _RememberMeCheckboxState extends State<_RememberMeCheckbox> {
       onChanged: (value) => setState(() => isChecked = value ?? false),
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 7f9d91b (Initial commit of my changes)

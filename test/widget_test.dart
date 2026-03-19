@@ -7,17 +7,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-<<<<<<< HEAD
-
 import 'package:wvsu_attendance_system/main.dart';
-
-=======
 import 'package:wvsu_attendance_system/main.dart';
 
 
-
-
->>>>>>> 7f9d91b (Initial commit of my changes)
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
@@ -34,10 +27,5 @@ void main() {
     // Verify that our counter has incremented.
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
-<<<<<<< HEAD
-=======
-
-    
->>>>>>> 7f9d91b (Initial commit of my changes)
   });
 }
