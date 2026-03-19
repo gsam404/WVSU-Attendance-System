@@ -634,4 +634,8 @@ class _RememberMeCheckboxState extends State<_RememberMeCheckbox> {
       onChanged: (value) => setState(() => isChecked = value ?? false),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 7f9d91b (Initial commit of my changes)
