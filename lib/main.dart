@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart'; // Make sure this file exists and has scanStudentID()
-import 'pages/addAdmin.dart'; // <--- ADDED THIS IMPORT FOR THE ADMIN DASHBOARD
+import 'services/api_service.dart'; 
+import 'pages/addAdmin.dart';       
+import 'pages/analyticspage.dart';  
+import 'pages/attendancepage.dart'; 
+import 'pages/sidebar.dart';        
 
 void main() {
   runApp(const MyApp());
@@ -13,15 +16,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'WVSU Library Attendance',
       theme: ThemeData(
         fontFamily: 'Inter',
+        useMaterial3: true,
       ),
+      // Set the initial page to the AttendancePortal (the choice screen)
       home: const AttendancePortal(),
     );
   }
 }
 
-/// Main Attendance Portal page
+/// Main Attendance Portal page (Selection Screen)
 class AttendancePortal extends StatelessWidget {
   const AttendancePortal({super.key});
 
@@ -43,10 +49,7 @@ class AttendancePortal extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/wvsu_logo.png',
-                  width: 130,
-                ),
+                Image.asset('assets/wvsu_logo.png', width: 130),
                 const SizedBox(height: 30),
                 const Text(
                   'WVSU Library Attendance',
@@ -71,9 +74,7 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const StudentCheckInPage(),
-                          ),
+                          MaterialPageRoute(builder: (context) => const StudentCheckInPage()),
                         );
                       },
                     ),
@@ -87,8 +88,7 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const AdminLoginPage()),
+                          MaterialPageRoute(builder: (context) => const AdminLoginPage()),
                         );
                       },
                     ),
@@ -117,29 +117,16 @@ class AttendancePortal extends StatelessWidget {
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 25,
-            offset: Offset(0, 15),
-          ),
+          BoxShadow(color: Colors.black26, blurRadius: 25, offset: Offset(0, 15)),
         ],
       ),
       child: Column(
         children: [
           Icon(icon, size: 60, color: const Color(0xFF1A237E)),
           const SizedBox(height: 20),
-          Text(title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              )),
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              )),
+          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.black54)),
           const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
@@ -148,16 +135,11 @@ class AttendancePortal extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 51, 133, 210),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 buttonText,
-                style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -167,7 +149,7 @@ class AttendancePortal extends StatelessWidget {
   }
 }
 
-/// Student Check-In Page (RFID Scan Page)
+/// Student Check-In Page (Barcode Scan Page)
 class StudentCheckInPage extends StatefulWidget {
   const StudentCheckInPage({super.key});
 
@@ -176,26 +158,23 @@ class StudentCheckInPage extends StatefulWidget {
 }
 
 class _StudentCheckInPageState extends State<StudentCheckInPage> {
-  final FocusNode _rfidFocusNode = FocusNode();
-  final TextEditingController _rfidController = TextEditingController();
+  final FocusNode _barcodeFocusNode = FocusNode();
+  final TextEditingController _barcodeController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // This ensures the hidden field is always ready to receive the RFID scan
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _rfidFocusNode.requestFocus();
+      _barcodeFocusNode.requestFocus();
     });
   }
 
-  Future<void> _handleRFIDScan(String uid) async {
-    if (uid.isEmpty) return;
+  Future<void> _handleBarcodeScan(String barcode) async {
+    if (barcode.isEmpty) return;
 
-    // Show a loading dialog or indicator if needed
     try {
-      // We use the same scanStudentID function you used for manual input
-      // Assuming your database table uses the RFID UID as the identifier
-      var studentData = await scanStudentID(uid); 
+      // FIXED: Call through ApiService instance
+      var studentData = await ApiService().scanStudentID(barcode); 
 
       if (studentData != null) {
         if (mounted) {
@@ -213,14 +192,24 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('RFID Tag not recognized!')),
+            const SnackBar(
+              content: Text('Barcode not recognized! Please try again or use Manual Input.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
     } finally {
-      _rfidController.clear();
-      _rfidFocusNode.requestFocus(); // Keep listening for the next person
+      _barcodeController.clear();
+      _barcodeFocusNode.requestFocus(); 
     }
+  }
+
+  @override
+  void dispose() {
+    _barcodeController.dispose();
+    _barcodeFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -228,18 +217,15 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. HIDDEN TEXT FIELD TO CATCH RFID INPUT
           Opacity(
             opacity: 0,
             child: TextField(
-              focusNode: _rfidFocusNode,
-              controller: _rfidController,
+              focusNode: _barcodeFocusNode,
+              controller: _barcodeController,
               autofocus: true,
-              onSubmitted: (value) => _handleRFIDScan(value),
+              onSubmitted: (value) => _handleBarcodeScan(value),
             ),
           ),
-          
-          // 2. YOUR EXISTING UI
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -254,33 +240,63 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Image.asset('assets/wvsu_logo.png', width: 130),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                   Container(
-                    width: 900,
+                    width: 950,
+                    height: 550,
                     padding: const EdgeInsets.all(40),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD6DEE3),
+                      color: const Color(0xFFEAF2F8),
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.contactless, size: 80, color: Color(0xFF1A237E)), // Visual cue
-                        const SizedBox(height: 20),
-                        const Text(
-                          "Scan Your RFID Card to Enter",
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 40),
-                        ElevatedButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ManualInputPage()),
+                    child: Container(
+                      width: double.infinity,
+                      height: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD6DDF0),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Scan Your ID Barcode to Enter",
+                            style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
                           ),
-                          child: const Text("No ID? Manual Input"),
-                        ),
-                        // ... rest of your buttons
-                      ],
+                          const SizedBox(height: 30),
+                          const Text(
+                            "Place your ID barcode under the scanner\nEnsure your card is active and not expired.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 18, color: Colors.black87, height: 1.5),
+                          ),
+                          const SizedBox(height: 60),
+                          const Text("No ID? Please enter your details manually below.", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                          const SizedBox(height: 15),
+                          ElevatedButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ManualInputPage()),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF438EE4),
+                              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: const BorderSide(color: Colors.black87, width: 1),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text("Manual Input", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(context), 
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    label: const Text("Back to Portal", style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                 ],
               ),
@@ -292,7 +308,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   }
 }
 
-/// Manual Input Page - Connected to Database via api_service
+/// Manual Input Page
 class ManualInputPage extends StatefulWidget {
   const ManualInputPage({super.key});
 
@@ -346,10 +362,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          "Enter Your Student ID",
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                        ),
+                        const Text("Enter Your Student ID", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 50),
                         SizedBox(
                           width: 500,
@@ -362,10 +375,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(100),
-                                borderSide: BorderSide.none,
-                              ),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(100), borderSide: BorderSide.none),
                             ),
                           ),
                         ),
@@ -375,15 +385,13 @@ class _ManualInputPageState extends State<ManualInputPage> {
                             String enteredId = _idController.text.trim();
                             if (enteredId.isNotEmpty) {
                               setState(() => _isLoading = true);
-
                               try {
-                                // Fetch data from XAMPP/MySQL via api_service.dart
-                                var studentData = await scanStudentID(enteredId);
-
+                                // FIXED: Call through ApiService instance
+                                var studentData = await ApiService().scanStudentID(enteredId);
                                 setState(() => _isLoading = false);
 
                                 if (studentData != null) {
-                                  if (context.mounted) {
+                                  if (mounted) {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -397,7 +405,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                   }
                                   _idController.clear();
                                 } else {
-                                  if (context.mounted) {
+                                  if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Error: Student ID not found in database!')),
                                     );
@@ -405,10 +413,8 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                 }
                               } catch (e) {
                                 setState(() => _isLoading = false);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Connection Error: $e')),
-                                  );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connection Error: $e')));
                                 }
                               }
                             }
@@ -419,11 +425,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           ),
                           child: _isLoading 
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                              )
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                             : const Text("SUBMIT", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
                         const SizedBox(height: 50),
@@ -448,6 +450,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
   }
 }
 
+/// Student Display Page (Success View)
 class StudentDisplaySignInPage extends StatelessWidget {
   final String studentId;
   final String studentName;
@@ -462,7 +465,6 @@ class StudentDisplaySignInPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // This gets the current time (e.g., 8:25 AM)
     String currentTime = TimeOfDay.now().format(context);
 
     return Scaffold(
@@ -488,18 +490,12 @@ class StudentDisplaySignInPage extends StatelessWidget {
               children: [
                 const Icon(Icons.verified, color: Colors.lightBlue, size: 80),
                 const SizedBox(height: 20),
-                const Text(
-                  "Welcome to the Library",
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                ),
+                const Text("Welcome to the Library", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 30),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDDE2F4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: BoxDecoration(color: const Color(0xFFDDE2F4), borderRadius: BorderRadius.circular(20)),
                   child: Column(
                     children: [
                       Text(studentId, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -617,12 +613,10 @@ class AdminLoginPage extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
-                            // <--- THIS IS THE FIX: Navigates to the Admin Dashboard
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => const AdminDashboard(), 
-                              ),
+                              // Changed to DashboardPage to match your Sidebar selection
+                              MaterialPageRoute(builder: (context) => const DashboardPage()), 
                             );
                           },
                           style: ElevatedButton.styleFrom(
