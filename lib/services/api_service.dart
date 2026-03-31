@@ -7,10 +7,10 @@ class ApiService {
   // Use your local IP address for physical devices/Web
   // Use 10.0.2.2 for Android Emulator
   final String baseUrl = kIsWeb
-      ? 'http://192.168.1.48/libgate_api'
+      ? 'http://192.168.1.25/libgate_api'
       : Platform.isAndroid
           ? 'http://10.0.2.2/libgate_api'
-          : 'http://192.168.1.48/libgate_api';
+          : 'http://192.168.1.25/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
@@ -80,5 +80,28 @@ class ApiService {
       print("Error fetching attendance: $e");
     }
     return [];
+  }
+
+  // --- 4. GET ANALYTICS (For the Analytics Page) ---
+  Future<Map<String, dynamic>?> getAnalytics() async {
+    final String apiUrl = '$baseUrl/analytics.php';
+
+    try {
+      final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("Analytics API: $data");
+        return data;
+      } else {
+        print("Server Error (Analytics): ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      print("Connection Error (Analytics): $e");
+      return null;
+    }
   }
 }

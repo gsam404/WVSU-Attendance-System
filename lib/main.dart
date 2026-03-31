@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'services/api_service.dart'; 
-import 'pages/addAdmin.dart';       
-import 'pages/analyticspage.dart';  
-import 'pages/attendancepage.dart'; 
 import 'pages/sidebar.dart';        
 
 void main() {
