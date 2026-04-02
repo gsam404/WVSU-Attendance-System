@@ -64,13 +64,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final currentData = selectedRange == "Weekly" ? weeklyData : monthlyData;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFE5E5E5), // Matches Figma background
       body: Row(
         children: [
           const SideBar(selectedIndex: 1),
           Expanded(
             child: Column(
               children: [
-                // HEADER 
+                // HEADER - 
                 Container(
                   width: double.infinity,
                   color: const Color(0xFFD6D6D6), 
@@ -78,37 +79,35 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   child: const Text(
                     "Analytics",
                     style: TextStyle(
-                      fontSize: 26, 
+                      fontSize: 24, 
                       fontWeight: FontWeight.bold, 
                       color: Color(0xFF1F2937),
                     ),
                   ),
                 ),
 
-                // MAIN BODY 
+                // MAIN CONTENT AREA - No Scrolling
                 Expanded(
-                  child: Container(
-                    color: const Color(0xFFE5E5E5), 
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 35),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // TOP STAT CARDS
-                          Row(
-                            children: [
-                              Expanded(child: _buildStatCard("Peak traffic day", peakDay, Icons.wb_sunny_outlined, Colors.orange)),
-                              const SizedBox(width: 25),
-                              Expanded(child: _buildStatCard("Most visited by Department", topDepartment, Icons.apartment, Colors.green)),
-                              const SizedBox(width: 25),
-                              Expanded(child: _buildStatCard("Most visited by Course", topCourse, Icons.groups_outlined, Colors.blue)),
-                            ],
-                          ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Column(
+                      children: [
+                        // STAT CARDS - Using AspectRatio to keep them consistent
+                        Row(
+                          children: [
+                            Expanded(child: _buildStatCard("Peak traffic day", peakDay, Icons.wb_sunny_outlined, Colors.orange)),
+                            const SizedBox(width: 25),
+                            Expanded(child: _buildStatCard("Most visited by Department", topDepartment, Icons.apartment, Colors.green)),
+                            const SizedBox(width: 25),
+                            Expanded(child: _buildStatCard("Most visited by Course", topCourse, Icons.groups_outlined, Colors.blue)),
+                          ],
+                        ),
 
-                          const SizedBox(height: 40),
+                        const SizedBox(height: 30),
 
-                          // CHART CONTAINER - White Card
-                          Container(
+                        // CHART CONTAINER - Occupies remaining space
+                        Expanded(
+                          child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(35),
                             decoration: BoxDecoration(
@@ -140,38 +139,45 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                     _buildToggleContainer(),
                                   ],
                                 ),
-                                const SizedBox(height: 60),
                                 
-                                // CHART BARS
-                                SizedBox(
-                                  height: 220,
-                                  child: Row(
-                                    children: List.generate(currentData.length, (i) {
-                                      return Expanded(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-                                          children: [
-                                            _buildBar(
-                                              currentData[i].toDouble(), 
-                                              selectedRange == "Weekly" ? i == 3 : false, 
-                                              selectedRange == "Monthly",
-                                            ),
-                                            const SizedBox(height: 15),
-                                            Text(
-                                              currentLabels[i],
-                                              style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
+                                // CHART BARS 
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 40),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        return Row(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: List.generate(currentData.length, (i) {
+                                            return Expanded(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                children: [
+                                                  _buildBar(
+                                                    currentData[i].toDouble(), 
+                                                    constraints.maxHeight * 0.8, // Scale bar to container height
+                                                    selectedRange == "Weekly" ? i == 3 : false, 
+                                                    selectedRange == "Monthly",
+                                                  ),
+                                                  const SizedBox(height: 15),
+                                                  Text(
+                                                    currentLabels[i],
+                                                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }),
+                                        );
+                                      }
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -185,7 +191,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      height: 180,
+      // Height set via AspectRatio or fixed value for consistency
+      height: 160, 
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -197,14 +204,18 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-              Icon(icon, size: 20, color: color.withOpacity(0.7)),
+              Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, size: 18, color: color),
+              ),
             ],
           ),
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF111827)),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
           ),
         ],
       ),
@@ -243,13 +254,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _buildBar(double value, bool highlight, bool isMonthly) {
+  Widget _buildBar(double value, double maxHeight, bool highlight, bool isMonthly) {
+    // Dynamic height calculation based on input data
+    double barHeight = (value * 10).clamp(10, maxHeight); 
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
-      width: isMonthly ? 16 : 35,
-      height: (value * 8).clamp(10, 180),
+      width: isMonthly ? 18 : 45,
+      height: barHeight,
       decoration: BoxDecoration(
-        color: highlight ? const Color(0xFF3B82F6) : const Color(0xFFD1D5DB),
+        color: highlight ? const Color(0xFF3B82F6) : const Color(0xFFD1D5DB).withOpacity(0.6),
         borderRadius: BorderRadius.circular(8),
       ),
     );
