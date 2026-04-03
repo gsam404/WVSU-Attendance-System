@@ -12,45 +12,43 @@ class AttendancePage extends StatefulWidget {
 }
 
 class _AttendancePageState extends State<AttendancePage> {
- 
   DateTime? _selectedDate;
-  
-  
   String? _selectedFilterCategory; 
   String? _selectedFilterValue;
 
-  
   final List<String> _filterCategories = ['Program', 'Department', 'School Year', 'Month'];
-
-  
   final List<String> _programs = ['All Programs', 'BSCS', 'BSIT', 'BSIS', 'BLIS'];
   final List<String> _departments = ['All Departments', 'CAS', 'CBM', 'COD', 'COE', 'CICT', 'COL', 'COM', 'CON', 'PESCAR'];
   final List<String> _schoolYears = ['2024-2025', '2025-2026', '2026-2027'];
   final List<String> _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
- 
   Stream<List<Map<String, dynamic>>> _getRealTimeAttendanceData() async* {
     while (true) {
       try {
+        // Attempt to fetch data from the server
         final response = await http.get(
           Uri.parse('http://10.0.2.2/get_attendance.php')
         ).timeout(const Duration(seconds: 3));
 
         if (response.statusCode == 200) {
           List<dynamic> jsonResponse = json.decode(response.body);
+          // Yield the real-time data
           yield jsonResponse.map((item) => item as Map<String, dynamic>).toList();
         } else {
+          // If server error, fall back to dummy data
           yield _getDummyData();
         }
       } catch (e) {
+        // If connection error, fall back to dummy data
         yield _getDummyData();
       }
       
+      // Delay for real-time polling
       await Future.delayed(const Duration(seconds: 3)); 
     }
   }
 
-  
+  // Fallback data if connection fails
   List<Map<String, dynamic>> _getDummyData() {
     return [
       {
@@ -76,13 +74,14 @@ class _AttendancePageState extends State<AttendancePage> {
     ];
   }
 
-  // --- INTERACTIVE DATE PICKER ---
+  // Opens the Flutter Date Picker
   Future<void> _pickDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      // Styling for the date picker (matching Blue accent)
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -99,14 +98,14 @@ class _AttendancePageState extends State<AttendancePage> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        // Reset the dynamic dropdowns if a specific date is picked
+        // Clear dependent filters
         _selectedFilterCategory = null;
         _selectedFilterValue = null;
       });
     }
   }
 
-  
+  // Returns the dropdown items based on the selected category
   List<String> _getChoicesForCategory(String category) {
     switch (category) {
       case 'Program': return _programs;
@@ -120,80 +119,96 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFE5E5E5), // Original Background Color
       body: Row(
         children: [
           const SideBar(selectedIndex: 2),
-
           Expanded(
             child: Container(
-              color: const Color(0xFFF3F4F6), 
-              padding: const EdgeInsets.all(24.0), 
-              child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _getRealTimeAttendanceData(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final attendanceData = snapshot.data ?? [];
-                  final totalEntry = attendanceData.length.toString();
-                  const mostVisitedDept = 'CICT'; 
-                  const mostVisitedCourse = 'BSCS';
-                  const avgVisits = '1.3 visits';
-                  const peakHour = '11:00am-12:40pm';
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Attendance',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+              color: const Color(0xFFF3F4F6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- HEADER CONTAINER (Original Styling) ---
+                  Container(
+                    width: double.infinity,
+                    color: const Color(0xFFD6D6D6),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+                    child: const Text(
+                      "Attendance ",
+                      style: TextStyle(
+                        fontSize: 24, 
+                        fontWeight: FontWeight.bold, 
+                        color: Color(0xFF1F2937),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Daily student entry logs - Filtered by your selection',
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    ),
+                  ),
+
+                  // --- SUBTITLE ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 16, 24, 24),
+                    child: Text(
+                      'Daily student entry logs - Filtered by your selection',
+                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    ),
+                  ),
+
+                  // --- MAIN CONTENT WITH STREAM ---
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _getRealTimeAttendanceData(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          // Data and metric calculations
+                          final attendanceData = snapshot.data ?? [];
+                          final totalEntry = attendanceData.length.toString();
+                          // Placeholder logic (needs real calculations)
+                          const mostVisitedDept = 'CICT'; 
+                          const mostVisitedCourse = 'BSCS';
+                          const avgVisits = '1.3 visits';
+                          const peakHour = '11:00am-12:40pm';
+
+                          return ListView( // Use ListView to prevent layout overflow
+                            children: [
+                              _buildInteractiveFilters(),
+                              const SizedBox(height: 20),
+                              // Spanning metrics table (Full Width)
+                              _buildMetricsTable(totalEntry, mostVisitedDept, mostVisitedCourse, avgVisits, peakHour),
+                              const SizedBox(height: 16),
+                              // Search bar aligned to right
+                              _buildSearchBar(),
+                              const SizedBox(height: 12),
+                              // Main Data Table within a container for styling
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ]
+                                ),
+                                clipBehavior: Clip.antiAlias, // Ensures internal content (table header) stays within bounds
+                                child: _buildFixedDataTable(attendanceData),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildPagination(),
+                              const SizedBox(height: 40), // Bottom padding
+                            ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: 20),
-
-                      // --- DYNAMIC FILTERS ARE BUILT HERE ---
-                      _buildInteractiveFilters(),
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: _buildMetricsTable(totalEntry, mostVisitedDept, mostVisitedCourse, avgVisits, peakHour),
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildSearchBar(),
-                      const SizedBox(height: 12),
-
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              )
-                            ]
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _buildDataTable(attendanceData),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-                      _buildPagination(),
-                    ],
-                  );
-                },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -202,42 +217,26 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  
+  // --- COMPONENT WIDGETS ---
 
+  // Interactive filters section (Date, Category, Export)
   Widget _buildInteractiveFilters() {
     return Wrap(
       spacing: 12, 
       runSpacing: 12, 
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-
+        // FIXED CALENDAR SELECTOR (Original design, full width card)
         InkWell(
           onTap: () => _pickDate(context),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white, 
-              borderRadius: BorderRadius.circular(8), 
-              border: Border.all(color: Colors.grey.shade300)
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.calendar_month, size: 18, color: Colors.blueAccent),
-                const SizedBox(width: 8),
-                Text(
-                  _selectedDate == null 
-                    ? 'Select Date' 
-                    : '${_selectedDate!.month}/${_selectedDate!.day}/${_selectedDate!.year}',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-              ],
-            ),
+          child: _buildSimpleFilterCard(
+            icon: Icons.calendar_today, // Simple icon, not filled
+            label: _selectedDate == null 
+              ? 'Feb 06, 2026' // Date text from Figma
+              : '${_selectedDate!.month}/${_selectedDate!.day}/${_selectedDate!.year}',
           ),
         ),
 
-        // 2. Filter Category Dropdown
         _buildCustomDropdown(
           hint: 'Filter by...',
           value: _selectedFilterCategory,
@@ -245,13 +244,13 @@ class _AttendancePageState extends State<AttendancePage> {
           onChanged: (val) {
             setState(() {
               _selectedFilterCategory = val;
-              _selectedFilterValue = null; // Clear specific choice when category changes
-              _selectedDate = null; // Optional: clear date if using categorical filter
+              _selectedFilterValue = null; // Reset value when category changes
+              _selectedDate = null; // Clear date filter if using category
             });
           },
         ),
 
-        // 3. Dynamic Choices Dropdown (Only appears after category is selected)
+        // Dependent dropdown, only visible if a category is selected
         if (_selectedFilterCategory != null)
           _buildCustomDropdown(
             hint: 'Select $_selectedFilterCategory',
@@ -260,13 +259,15 @@ class _AttendancePageState extends State<AttendancePage> {
             onChanged: (val) => setState(() => _selectedFilterValue = val),
           ),
 
-        // 4. Export CSV Button
+        // Spacer to push the Export button to the right
+        const Spacer(),
+
         ElevatedButton.icon(
           onPressed: () {},
           icon: const Icon(Icons.download, size: 16, color: Colors.white),
           label: const Text('Export CSV', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
+            backgroundColor: Colors.blueAccent, // Blue accent background
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -276,6 +277,30 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
+  // Helper widget for non-dropdown filter cards (Date picker)
+  Widget _buildSimpleFilterCard({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(8), 
+        border: Border.all(color: Colors.grey.shade300)
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: Colors.blueAccent),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper for custom dropdown styling
   Widget _buildCustomDropdown({
     required String hint,
     required String? value,
@@ -307,17 +332,18 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
+  // Search Bar aligned to the right side
   Widget _buildSearchBar() {
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
-        width: 300, 
+        width: 300, // Matches Figma approximate width
         height: 44,
         child: TextField(
           decoration: InputDecoration(
             hintText: 'Search Student Name or ID...',
             hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-            suffixIcon: const Icon(Icons.search, size: 20, color: Colors.blueAccent),
+            suffixIcon: const Icon(Icons.search, size: 20, color: Colors.blueAccent), // Blue accent magnifying glass
             filled: true, 
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -335,8 +361,10 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
+  // FIXED Metrics table (Large/Width card style matching Figma)
   Widget _buildMetricsTable(String total, String dept, String course, String avg, String peak) {
     return Container(
+      width: double.infinity, // Spans full content width
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(12),
@@ -345,6 +373,7 @@ class _AttendancePageState extends State<AttendancePage> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          // Header Row with Blue Text on Light Blue background
           Container(
             color: const Color(0xFFDDEAF8),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -356,16 +385,18 @@ class _AttendancePageState extends State<AttendancePage> {
               ],
             ),
           ),
+          // Data Rows
           _buildMetricRow('Total entry', total),
           _buildMetricRow('Most visited by department', dept),
           _buildMetricRow('Most visited by course', course),
           _buildMetricRow('Average visits per student', avg),
-          _buildMetricRow('Peak traffic hour', peak, isLast: true),
+          _buildMetricRow('Peak traffic hour', peak, isLast: true), // Last row doesn't have a bottom border
         ],
       ),
     );
   }
 
+  // Helper Widget for a single row in the Metrics table
   Widget _buildMetricRow(String metric, String value, {bool isLast = false}) {
     return Container(
       decoration: BoxDecoration(border: isLast ? null : Border(bottom: BorderSide(color: Colors.grey.shade200))),
@@ -380,64 +411,7 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  Widget _buildDataTable(List<Map<String, dynamic>> realTimeData) {
-    const headerStyle = TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.bold);
-    const cellStyle = TextStyle(fontSize: 14, color: Colors.black87);
-
-    List<DataRow> rows = realTimeData.map((data) {
-      return DataRow(cells: [
-        DataCell(Text(data['date']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['signIn']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['signOut']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['name']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['studentId']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['year']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['course']?.toString() ?? '', style: cellStyle)),
-        DataCell(Text(data['department']?.toString() ?? '', style: cellStyle)),
-      ]);
-    }).toList();
-
-    while (rows.length < 5) {
-      rows.add(const DataRow(cells: [
-        DataCell(Text('')), DataCell(Text('')), DataCell(Text('')), DataCell(Text('')),
-        DataCell(Text('')), DataCell(Text('')), DataCell(Text('')), DataCell(Text(''))
-      ]));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 300), 
-                child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(const Color(0xFFDDEAF8)),
-                  border: TableBorder.all(color: Colors.grey.shade200),
-                  columnSpacing: 40,
-                  horizontalMargin: 24,
-                  columns: const [
-                    DataColumn(label: Text('Date', style: headerStyle)),
-                    DataColumn(label: Text('Sign in', style: headerStyle)),
-                    DataColumn(label: Text('Sign out', style: headerStyle)),
-                    DataColumn(label: Text('Name', style: headerStyle)),
-                    DataColumn(label: Text('Student ID', style: headerStyle)),
-                    DataColumn(label: Text('Year', style: headerStyle)),
-                    DataColumn(label: Text('Course', style: headerStyle)),
-                    DataColumn(label: Text('Department', style: headerStyle)),
-                  ],
-                  rows: rows,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
+  // Basic Pagination Controls
   Widget _buildPagination() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -453,6 +427,38 @@ class _AttendancePageState extends State<AttendancePage> {
         TextButton(onPressed: () {}, child: const Text('3', style: TextStyle(color: Colors.black54))),
         IconButton(icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blueAccent), onPressed: () {}),
       ],
+    );
+  }
+
+  // The fixed data table with Blue accent headers
+  Widget _buildFixedDataTable(List<Map<String, dynamic>> attendanceData) {
+    return DataTable(
+      headingRowColor: MaterialStateProperty.all(const Color(0xFFDDEAF8)), // Light blue background for header
+      dataTextStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+      columnSpacing: 30, // Optimized spacing
+      headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent, fontSize: 14), // Blue Accent Headers
+      columns: const [
+        DataColumn(label: Text('Date')),
+        DataColumn(label: Text('Sign In')),
+        DataColumn(label: Text('Sign Out')),
+        DataColumn(label: Text('Name')),
+        DataColumn(label: Text('Student ID')),
+        DataColumn(label: Text('Year')),
+        DataColumn(label: Text('Course')),
+        DataColumn(label: Text('Department')),
+      ],
+      rows: attendanceData.map((item) => DataRow(
+        cells: [
+          DataCell(Text(item['date'] ?? '')),
+          DataCell(Text(item['signIn'] ?? '')),
+          DataCell(Text(item['signOut'] ?? '')),
+          DataCell(Text(item['name'] ?? '')),
+          DataCell(Text(item['studentId'] ?? '')),
+          DataCell(Text(item['year'] ?? '')),
+          DataCell(Text(item['course'] ?? '')),
+          DataCell(Text(item['department'] ?? '')),
+        ],
+      )).toList(),
     );
   }
 }
