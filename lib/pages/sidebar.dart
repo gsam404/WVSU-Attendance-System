@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:wvsu_attendance_system/pages/importpage.dart';
 import '../services/api_service.dart'; 
 import './attendancepage.dart';
 import './analyticspage.dart';
@@ -304,6 +305,7 @@ class _SideBarState extends State<SideBar> {
     {'icon': 'assets/dashboard.png', 'title': 'Dashboard', 'page': const DashboardPage()},
     {'icon': 'assets/analytics.png', 'title': 'Analytics', 'page': const AnalyticsPage()},
     {'icon': 'assets/attendance.png', 'title': 'Attendance', 'page': const AttendancePage()},
+    {'icon': 'assets/import.png', 'title': 'Import', 'page': const ImportPlaceHolderClass()},
   ];
 
   @override
