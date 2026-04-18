@@ -24,11 +24,38 @@ class _ImportPageState extends State<ImportPage> {
   List<String> detectedFields = [];
   List<List<dynamic>> previewRows = [];
 
+  // --- LOGIC: RESET & SUCCESS ---
+
+  // Clears the selection without showing a "Success" snackbar
+  void _resetUI() {
+    setState(() {
+      selectedFileName = null;
+      selectedFileBytes = null;
+      recordCount = null;
+      isReady = false;
+      isUploading = false;
+      detectedFields = [];
+      previewRows = [];
+    });
+  }
+
+  // Called only after a successful server response
+  void _handleSuccess(String message) {
+    _resetUI();
+    _showSnackBar(message, Colors.green);
+  }
+
+  void _showSnackBar(String m, Color c) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(m), backgroundColor: c),
+    );
+  }
+
   // --- LOGIC: FILE PICKING & PARSING ---
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['csv', 'xlsx', 'pdf', 'docx', 'doc'],
+      allowedExtensions: ['csv', 'xlsx'],
       withData: true,
     );
 
@@ -64,10 +91,6 @@ class _ImportPageState extends State<ImportPage> {
                 return index < row.length ? row[index]?.toString() ?? "" : "";
               });
             }).toList();
-          } else {
-            recordCount = 0;
-            detectedFields = [];
-            previewRows = [];
           }
         });
       } catch (e) {
@@ -76,37 +99,42 @@ class _ImportPageState extends State<ImportPage> {
     }
   }
 
+  // --- LOGIC: DATABASE IMPORT ---
   Future<void> _uploadToDatabase() async {
     if (!isReady || selectedFileBytes == null) return;
+    
     setState(() => isUploading = true);
+    
     try {
+      // Note: Use 'http://10.0.2.2/api/upload.php' if using Android Emulator
       var request = http.MultipartRequest('POST', Uri.parse('http://localhost/api/upload.php'));
-      request.files.add(http.MultipartFile.fromBytes('file', selectedFileBytes!, filename: selectedFileName));
+      
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file', 
+          selectedFileBytes!, 
+          filename: selectedFileName
+        ),
+      );
+
       var response = await request.send();
-      if (response.statusCode == 200) {
-        _handleSuccess();
+      var responseData = await response.stream.bytesToString();
+      
+      // Parse the JSON response from your upload.php
+      final result = json.decode(responseData);
+
+      if (response.statusCode == 200 && result['status'] == 'success') {
+        _handleSuccess(result['message']);
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        _showSnackBar(result['message'] ?? "Server error occurred.", Colors.red);
       }
     } catch (e) {
-      _showSnackBar("Connection failed. Check XAMPP.", Colors.red);
+      _showSnackBar("Connection failed. Check if XAMPP is running.", Colors.red);
+      print("Upload Error: $e");
     } finally {
       setState(() => isUploading = false);
     }
   }
-
-  void _handleSuccess() {
-    setState(() {
-      isReady = false;
-      selectedFileName = null;
-      selectedFileBytes = null;
-      detectedFields = [];
-      previewRows = [];
-    });
-    _showSnackBar("Database updated successfully!", Colors.green);
-  }
-
-  void _showSnackBar(String m, Color c) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), backgroundColor: c));
 
   // --- UI BUILDER ---
   @override
@@ -193,22 +221,8 @@ class _ImportPageState extends State<ImportPage> {
   );
 
   Widget _buildFileSummaryCard() {
-    IconData fileIcon = Icons.insert_drive_file;
-    Color iconColor = const Color(0xFF6C91C2); 
-    String ext = selectedFileName?.split('.').last.toLowerCase() ?? "";
-
-    if (isReady) {
-      if (ext == 'pdf') {
-        fileIcon = Icons.picture_as_pdf;
-        iconColor = Colors.redAccent;
-      } else if (ext == 'xlsx' || ext == 'csv') {
-        fileIcon = Icons.table_chart;
-        iconColor = Colors.green;
-      } else if (ext == 'docx' || ext == 'doc') {
-        fileIcon = Icons.description;
-        iconColor = Colors.blue;
-      }
-    }
+    IconData fileIcon = Icons.table_chart;
+    Color iconColor = Colors.green;
 
     return Container(
       height: 180, padding: const EdgeInsets.all(20),
@@ -289,7 +303,7 @@ class _ImportPageState extends State<ImportPage> {
 
   Widget _buildActionFooter() => Row(mainAxisAlignment: MainAxisAlignment.end, children: [
     OutlinedButton(
-      onPressed: _handleSuccess, 
+      onPressed: _resetUI, // FIX: Resets the page without showing success snackbar
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 18), 
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
