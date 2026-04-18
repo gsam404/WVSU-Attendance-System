@@ -331,7 +331,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Add new admins, manage existing roles, transfer system ownership.", style: TextStyle(color: Colors.white, fontSize: 14)),
+                    const Text("Add new admins, manage existing roles, transfer system ownership.", style: TextStyle(color: Colors.white, fontSize: 20)),
                     const SizedBox(height: 25),
                     _buildCard(
                       title: "Add New University Librarian",
