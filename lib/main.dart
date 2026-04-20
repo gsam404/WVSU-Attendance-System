@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart'; 
-import 'pages/sidebar.dart';        
+import 'services/api_service.dart';
+import 'pages/sidebar.dart';
+import 'pages/adminLoginPage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -71,7 +72,8 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const StudentCheckInPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const StudentCheckInPage()),
                         );
                       },
                     ),
@@ -85,7 +87,8 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const AdminLoginPage()),
                         );
                       },
                     ),
@@ -114,16 +117,21 @@ class AttendancePortal extends StatelessWidget {
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 25, offset: Offset(0, 15)),
+          BoxShadow(
+              color: Colors.black26, blurRadius: 25, offset: Offset(0, 15)),
         ],
       ),
       child: Column(
         children: [
           Icon(icon, size: 60, color: const Color(0xFF1A237E)),
           const SizedBox(height: 20),
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.black54)),
+          Text(subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Colors.black54)),
           const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
@@ -132,11 +140,15 @@ class AttendancePortal extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 51, 133, 210),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 buttonText,
-                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -172,7 +184,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
     if (barcode.trim().isEmpty) return;
 
     try {
-      var studentData = await ApiService().scanStudentID(barcode.trim()); 
+      var studentData = await ApiService().scanStudentID(barcode.trim());
 
       if (studentData != null && mounted) {
         Navigator.push(
@@ -188,7 +200,9 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Student not found!'), backgroundColor: Colors.redAccent),
+            const SnackBar(
+                content: Text('Student not found!'),
+                backgroundColor: Colors.redAccent),
           );
         }
       }
@@ -223,11 +237,12 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                   focusNode: _barcodeFocusNode,
                   controller: _barcodeController,
                   autofocus: true,
-                  onSubmitted: _handleBarcodeScan, // Triggered by scanner's "Enter"
+                  onSubmitted:
+                      _handleBarcodeScan, // Triggered by scanner's "Enter"
                 ),
               ),
             ),
-            
+
             // --- YOUR ORIGINAL UI BELOW ---
             Container(
               width: double.infinity,
@@ -264,32 +279,49 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                           children: [
                             const Text(
                               "Scan Your ID Barcode to Enter",
-                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                              style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black),
                             ),
                             const SizedBox(height: 30),
                             const Text(
                               "Place your ID barcode under the scanner\nEnsure your card is active and not expired.",
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 18, color: Colors.black87, height: 1.5),
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.black87,
+                                  height: 1.5),
                             ),
                             const SizedBox(height: 60),
-                            const Text("No ID? Please enter your details manually below.", style: TextStyle(fontSize: 13, color: Colors.black87)),
+                            const Text(
+                                "No ID? Please enter your details manually below.",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.black87)),
                             const SizedBox(height: 15),
                             ElevatedButton(
                               onPressed: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ManualInputPage()),
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ManualInputPage()),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF438EE4),
-                                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 50, vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  side: const BorderSide(color: Colors.black87, width: 1),
+                                  side: const BorderSide(
+                                      color: Colors.black87, width: 1),
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text("Manual Input", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
+                              child: const Text("Manual Input",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ],
                         ),
@@ -297,9 +329,10 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                     ),
                     const SizedBox(height: 20),
                     TextButton.icon(
-                      onPressed: () => Navigator.pop(context), 
+                      onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      label: const Text("Back to Portal", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      label: const Text("Back to Portal",
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
                     ),
                   ],
                 ),
@@ -311,6 +344,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
     );
   }
 }
+
 /// Manual Input Page
 class ManualInputPage extends StatefulWidget {
   const ManualInputPage({super.key});
@@ -321,7 +355,7 @@ class ManualInputPage extends StatefulWidget {
 
 class _ManualInputPageState extends State<ManualInputPage> {
   final TextEditingController _idController = TextEditingController();
-  bool _isLoading = false; 
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -357,7 +391,8 @@ class _ManualInputPageState extends State<ManualInputPage> {
                     borderRadius: BorderRadius.circular(40),
                   ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 50),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 40, horizontal: 50),
                     decoration: BoxDecoration(
                       color: const Color(0xFFCFD9E8),
                       borderRadius: BorderRadius.circular(40),
@@ -365,7 +400,9 @@ class _ManualInputPageState extends State<ManualInputPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text("Enter Your Student ID", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                        const Text("Enter Your Student ID",
+                            style: TextStyle(
+                                fontSize: 32, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 50),
                         SizedBox(
                           width: 500,
@@ -377,62 +414,96 @@ class _ManualInputPageState extends State<ManualInputPage> {
                               hintText: "Enter Student ID (e.g., 2023M0523)",
                               filled: true,
                               fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(100), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 20, horizontal: 30),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(100),
+                                  borderSide: BorderSide.none),
                             ),
                           ),
                         ),
                         const SizedBox(height: 30),
                         ElevatedButton(
-                          onPressed: _isLoading ? null : () async {
-                            String enteredId = _idController.text.trim();
-                            if (enteredId.isNotEmpty) {
-                              setState(() => _isLoading = true);
-                              try {
-                                // FIXED: Call through ApiService instance
-                                var studentData = await ApiService().scanStudentID(enteredId);
-                                setState(() => _isLoading = false);
+                          onPressed: _isLoading
+                              ? null
+                              : () async {
+                                  String enteredId = _idController.text.trim();
+                                  if (enteredId.isNotEmpty) {
+                                    setState(() => _isLoading = true);
+                                    try {
+                                      // FIXED: Call through ApiService instance
+                                      var studentData = await ApiService()
+                                          .scanStudentID(enteredId);
+                                      setState(() => _isLoading = false);
 
-                                if (studentData != null) {
-                                  if (mounted) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => StudentDisplaySignInPage(
-                                          studentId: studentData['student_id']?.toString() ?? "N/A",
-                                          studentName: studentData['full_name']?.toString() ?? "Unknown",
-                                          program: studentData['program']?.toString() ?? "N/A",
-                                        ),
-                                      ),
-                                    );
+                                      if (studentData != null) {
+                                        if (mounted) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  StudentDisplaySignInPage(
+                                                studentId:
+                                                    studentData['student_id']
+                                                            ?.toString() ??
+                                                        "N/A",
+                                                studentName:
+                                                    studentData['full_name']
+                                                            ?.toString() ??
+                                                        "Unknown",
+                                                program: studentData['program']
+                                                        ?.toString() ??
+                                                    "N/A",
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        _idController.clear();
+                                      } else {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                                content: Text(
+                                                    'Error: Student ID not found in database!')),
+                                          );
+                                        }
+                                      }
+                                    } catch (e) {
+                                      setState(() => _isLoading = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text(
+                                                    'Connection Error: $e')));
+                                      }
+                                    }
                                   }
-                                  _idController.clear();
-                                } else {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Error: Student ID not found in database!')),
-                                    );
-                                  }
-                                }
-                              } catch (e) {
-                                setState(() => _isLoading = false);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connection Error: $e')));
-                                }
-                              }
-                            }
-                          },
+                                },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 51, 133, 210),
-                            padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 18),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            backgroundColor:
+                                const Color.fromARGB(255, 51, 133, 210),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 60, vertical: 18),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15)),
                           ),
-                          child: _isLoading 
-                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                            : const Text("SUBMIT", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 3))
+                              : const Text("SUBMIT",
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
                         ),
                         const SizedBox(height: 50),
-                        const Text("Need help? Reach out to the service desk.", style: TextStyle(fontSize: 13, color: Colors.black54)),
+                        const Text("Need help? Reach out to the service desk.",
+                            style:
+                                TextStyle(fontSize: 13, color: Colors.black54)),
                       ],
                     ),
                   ),
@@ -441,7 +512,8 @@ class _ManualInputPageState extends State<ManualInputPage> {
                 TextButton.icon(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  label: const Text("Back to Scanner", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  label: const Text("Back to Scanner",
+                      style: TextStyle(color: Colors.white, fontSize: 16)),
                   style: TextButton.styleFrom(backgroundColor: Colors.black26),
                 ),
               ],
@@ -466,7 +538,8 @@ class StudentDisplaySignInPage extends StatefulWidget {
   });
 
   @override
-  State<StudentDisplaySignInPage> createState() => _StudentDisplaySignInPageState();
+  State<StudentDisplaySignInPage> createState() =>
+      _StudentDisplaySignInPageState();
 }
 
 class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
@@ -509,25 +582,28 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
               children: [
                 const Icon(Icons.verified, color: Colors.lightBlue, size: 80),
                 const SizedBox(height: 20),
-                const Text("Welcome to the Library", 
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                const Text("Welcome to the Library",
+                    style:
+                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 30),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 30),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDDE2F4), 
-                    borderRadius: BorderRadius.circular(20)
-                  ),
+                      color: const Color(0xFFDDE2F4),
+                      borderRadius: BorderRadius.circular(20)),
                   child: Column(
                     children: [
-                      Text(widget.studentId, 
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      Text(widget.studentId,
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-                      Text(widget.studentName, style: const TextStyle(fontSize: 20)),
+                      Text(widget.studentName,
+                          style: const TextStyle(fontSize: 20)),
                       const SizedBox(height: 8),
-                      Text(widget.program, 
-                        style: const TextStyle(fontSize: 18, color: Colors.black54)),
+                      Text(widget.program,
+                          style: const TextStyle(
+                              fontSize: 18, color: Colors.black54)),
                     ],
                   ),
                 ),
@@ -545,134 +621,6 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Admin Login Page
-class AdminLoginPage extends StatelessWidget {
-  const AdminLoginPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/blue_bg.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/wvsu_logo.png', width: 130),
-                const SizedBox(height: 30),
-                Container(
-                  width: 600,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 40),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 25)],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(
-                        child: Column(
-                          children: [
-                            Text("Admin Portal", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
-                            SizedBox(height: 5),
-                            Text("Sign in to manage library attendance", style: TextStyle(fontSize: 14, color: Colors.black54)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      const Text("Username"),
-                      const SizedBox(height: 10),
-                      TextField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFE3E7F3),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      const Text("Password"),
-                      const SizedBox(height: 10),
-                      TextField(
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFE3E7F3),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Row(
-                        children: [
-                          _RememberMeCheckbox(),
-                          SizedBox(width: 5),
-                          Text("Remember me"),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              // Changed to DashboardPage to match your Sidebar selection
-                              MaterialPageRoute(builder: (context) => const DashboardPage()), 
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 51, 133, 210),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text("Login as Admin", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  label: const Text("Back to Portal", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 51, 133, 210)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RememberMeCheckbox extends StatefulWidget {
-  const _RememberMeCheckbox();
-  @override
-  State<_RememberMeCheckbox> createState() => _RememberMeCheckboxState();
-}
-
-class _RememberMeCheckboxState extends State<_RememberMeCheckbox> {
-  bool isChecked = false;
-  @override
-  Widget build(BuildContext context) {
-    return Checkbox(
-      value: isChecked,
-      onChanged: (value) => setState(() => isChecked = value ?? false),
     );
   }
 }

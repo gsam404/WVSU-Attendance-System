@@ -7,10 +7,10 @@ class ApiService {
   // Use your local IP address for physical devices/Web
   // Use 10.0.2.2 for Android Emulator
   final String baseUrl = kIsWeb
-      ? 'http://192.168.1.35/libgate_api'
+      ? 'http://192.168.0.100/libgate_api'
       : Platform.isAndroid
           ? 'http://10.0.2.2/libgate_api'
-          : 'http://192.168.1.35/libgate_api';
+          : 'http://192.168.0.100/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
@@ -47,9 +47,11 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_dashboard_stats.php';
 
     try {
-      final response = await http.get(
-        Uri.parse(apiUrl),
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(
+            Uri.parse(apiUrl),
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -70,8 +72,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_attendance.php';
 
     try {
-      final response = await http.get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -87,9 +89,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/analytics.php';
 
     try {
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
