@@ -27,7 +27,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     try {
       // REPLACE 'YOUR_IP' with your computer's local IP (e.g., 192.168.1.5)
       final response = await http.post(
-        Uri.parse('http://192.168.0.100/libgate_api/admin_login.php'),
+        Uri.parse('http://10.225.29.25/libgate_api/admin_login.php'),
         body: {'email': email, 'password': password},
       );
 

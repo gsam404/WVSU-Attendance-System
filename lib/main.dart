@@ -186,7 +186,9 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
     try {
       var studentData = await ApiService().scanStudentID(barcode.trim());
 
-      if (studentData != null && mounted) {
+      if (studentData != null &&
+          studentData['status'] == 'success' &&
+          mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -194,20 +196,21 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
               studentId: studentData['student_id']?.toString() ?? "N/A",
               studentName: studentData['full_name']?.toString() ?? "Unknown",
               program: studentData['program']?.toString() ?? "N/A",
+              action: studentData['action']?.toString() ?? "In", // Added
+              message: studentData['message']?.toString() ?? "", // Added
             ),
           ),
         );
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Student not found!'),
+            SnackBar(
+                content: Text(studentData?['message'] ?? 'Student not found!'),
                 backgroundColor: Colors.redAccent),
           );
         }
       }
     } finally {
-      // 4. ADDED: Clear and refocus so the next student can scan immediately
       _barcodeController.clear();
       _barcodeFocusNode.requestFocus();
     }
@@ -431,52 +434,60 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                   if (enteredId.isNotEmpty) {
                                     setState(() => _isLoading = true);
                                     try {
-                                      // FIXED: Call through ApiService instance
                                       var studentData = await ApiService()
                                           .scanStudentID(enteredId);
+
+                                      if (!mounted) return;
                                       setState(() => _isLoading = false);
 
-                                      if (studentData != null) {
-                                        if (mounted) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  StudentDisplaySignInPage(
-                                                studentId:
-                                                    studentData['student_id']
-                                                            ?.toString() ??
-                                                        "N/A",
-                                                studentName:
-                                                    studentData['full_name']
-                                                            ?.toString() ??
-                                                        "Unknown",
-                                                program: studentData['program']
-                                                        ?.toString() ??
-                                                    "N/A",
-                                              ),
+                                      if (studentData != null &&
+                                          studentData['status'] == 'success') {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                StudentDisplaySignInPage(
+                                              studentId:
+                                                  studentData['student_id']
+                                                          ?.toString() ??
+                                                      "N/A",
+                                              studentName:
+                                                  studentData['full_name']
+                                                          ?.toString() ??
+                                                      "Unknown",
+                                              program: studentData['program']
+                                                      ?.toString() ??
+                                                  "N/A",
+                                              action: studentData['action']
+                                                      ?.toString() ??
+                                                  "In", // Added fix
+                                              message: studentData['message']
+                                                      ?.toString() ??
+                                                  "", // Added fix
                                             ),
-                                          );
-                                        }
+                                          ),
+                                        );
                                         _idController.clear();
                                       } else {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    'Error: Student ID not found in database!')),
-                                          );
-                                        }
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                studentData?['message'] ??
+                                                    'Student ID not found!'),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
                                       }
                                     } catch (e) {
+                                      if (!mounted) return;
                                       setState(() => _isLoading = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(
-                                                content: Text(
-                                                    'Connection Error: $e')));
-                                      }
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text('Connection Error: $e')),
+                                      );
                                     }
                                   }
                                 },
@@ -529,12 +540,16 @@ class StudentDisplaySignInPage extends StatefulWidget {
   final String studentId;
   final String studentName;
   final String program;
+  final String action; // Added
+  final String message; // Added
 
   const StudentDisplaySignInPage({
     super.key,
     required this.studentId,
     required this.studentName,
     required this.program,
+    required this.action, // Added
+    required this.message, // Added
   });
 
   @override
@@ -546,8 +561,6 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
   @override
   void initState() {
     super.initState();
-    // --- TIMER LOGIC ---
-    // Wait for 2 seconds, then go back to the scanner screen automatically
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);
@@ -557,7 +570,16 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
 
   @override
   Widget build(BuildContext context) {
-    String currentTime = TimeOfDay.now().format(context);
+    // --- FIXED TIME LOGIC HERE ---
+    final now = DateTime.now();
+    final hour =
+        now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
+    final minute = now.minute.toString().padLeft(2, '0');
+    final period = now.hour >= 12 ? "PM" : "AM";
+    String currentTime = "$hour:$minute $period";
+    // -----------------------------
+
+    bool isLoggingIn = widget.action == "In";
 
     return Scaffold(
       body: Container(
@@ -580,11 +602,22 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.verified, color: Colors.lightBlue, size: 80),
+                // Icon changes based on action
+                Icon(isLoggingIn ? Icons.verified : Icons.exit_to_app,
+                    color: isLoggingIn ? Colors.lightBlue : Colors.orange,
+                    size: 80),
                 const SizedBox(height: 20),
-                const Text("Welcome to the Library",
+                // Text changes based on action
+                Text(
+                    isLoggingIn
+                        ? "Welcome to the Library"
+                        : "Goodbye! See you soon",
+                    style: const TextStyle(
+                        fontSize: 32, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Text(widget.message,
                     style:
-                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                        const TextStyle(fontSize: 16, color: Colors.black54)),
                 const SizedBox(height: 30),
                 Container(
                   width: double.infinity,
@@ -613,7 +646,12 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
                   children: [
                     const Icon(Icons.access_time, size: 18, color: Colors.blue),
                     const SizedBox(width: 8),
-                    Text("Logged at $currentTime. Returning to scanner..."),
+                    // Status text changes based on action
+                    Text(
+                      isLoggingIn
+                          ? "Logged In at $currentTime. Returning to scanner..."
+                          : "Logged Out at $currentTime. Returning to scanner...",
+                    ),
                   ],
                 ),
               ],
