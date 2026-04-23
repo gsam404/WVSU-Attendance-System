@@ -44,6 +44,11 @@ class _SideBarState extends State<SideBar> {
       'page': const AttendancePage()
     },
     {
+      'icon': 'assets/acadsetup.png',
+      'title': 'Analytics',
+      'page': const AnalyticsPage()
+    },
+    {
       'icon': 'assets/import.png',
       'title': 'Import',
       'page': const ImportPage()
@@ -144,7 +149,7 @@ class _SideBarState extends State<SideBar> {
                         );
                       },
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
