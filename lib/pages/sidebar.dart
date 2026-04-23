@@ -3,288 +3,14 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'package:wvsu_attendance_system/pages/importpage.dart';
-import '../services/api_service.dart'; 
+
 import './attendancepage.dart';
 import './analyticspage.dart';
 import './addAdmin.dart';
+import './importpage.dart';
+import './dashboardPage.dart';
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
-
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
-}
-
-class _DashboardPageState extends State<DashboardPage> {
-  String totalVisits = "0";
-  String topDept = "None";
-  List<PieChartSectionData> pieSections = [];
-  bool isLoading = true;
-
-  // Calendar State
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchStats();
-  }
-
-  Future<void> _fetchStats() async {
-    try {
-      final data = await ApiService().getDashboardStats();
-      if (data != null && data['status'] == 'success') {
-        final List<dynamic> pieData = data['pie_stats'] ?? [];
-        final List<Color> colors = [Colors.orange, Colors.blue, Colors.cyan, Colors.yellow, Colors.red];
-
-        List<PieChartSectionData> tempSections = [];
-        for (int i = 0; i < pieData.length; i++) {
-          double val = double.tryParse(pieData[i]['count'].toString()) ?? 0.0;
-          if (val > 0) {
-            tempSections.add(PieChartSectionData(
-              color: colors[i % colors.length],
-              value: val,
-              radius: 30,
-              showTitle: false,
-            ));
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            totalVisits = data['total_today'].toString();
-            topDept = data['top_dept']?.toString() ?? "No Logs";
-            pieSections = tempSections;
-            isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Dashboard Error: $e");
-      if (mounted) setState(() => isLoading = false);
-    }
-  }
-
-  Future<void> _selectYearAndMonth(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _focusedDay,
-      firstDate: DateTime.utc(2000, 1, 1),
-      lastDate: DateTime.utc(DateTime.now().year + 100, 12, 31),
-      helpText: 'SELECT CALENDAR VIEW',
-    );
-    if (picked != null && picked != _focusedDay) {
-      setState(() {
-        _focusedDay = picked;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE5E5E5),
-      body: Row(
-        children: [
-          const SideBar(selectedIndex: 0),
-          Expanded(
-            child: Column(
-              children: [
-                
-                // HEADER - Restored 
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFFD6D6D6),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
-                  child: const Text(
-                    "Dashboard",
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            _buildStatCard(totalVisits, "Total visits today", Icons.person_outline, Colors.deepPurple),
-                            const SizedBox(width: 20),
-                            _buildStatCard(topDept, "Most visit by Dept.", Icons.apartment, Colors.green),
-                            const SizedBox(width: 20),
-                            _buildPieChartCard(),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(flex: 2, child: _whiteBox("Student Visits Overview")),
-                              const SizedBox(width: 20),
-                              Expanded(flex: 1, child: _buildCalendarCard()),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        height: 160,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 26),
-            const Spacer(),
-            isLoading
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPieChartCard() {
-    return Expanded(
-      child: Container(
-        height: 160,
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-        child: (isLoading || pieSections.isEmpty)
-            ? const Center(child: Icon(Icons.pie_chart, size: 40, color: Colors.grey))
-            : PieChart(PieChartData(sections: pieSections, sectionsSpace: 2, centerSpaceRadius: 25)),
-      ),
-    );
-  }
-
-  Widget _whiteBox(String title) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          const Text("Daily breakdown of students check in this week", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const Spacer(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("S", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("M", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("T", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("W", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("TH", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("F", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                Text("S", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalendarCard() {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFA7C7E7),
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Color(0xFF1E3A8A)),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
-                    });
-                  },
-                ),
-                InkWell(
-                  onTap: () => _selectYearAndMonth(context),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat('MMMM, yyyy').format(_focusedDay),
-                        style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const Icon(Icons.arrow_drop_down, color: Color(0xFF1E3A8A)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right, color: Color(0xFF1E3A8A)),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: TableCalendar(
-              firstDay: DateTime.utc(2000, 1, 1),
-              lastDay: DateTime.utc(DateTime.now().year + 100, 12, 31),
-              focusedDay: _focusedDay,
-              headerVisible: false,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              },
-              onPageChanged: (focusedDay) {
-                setState(() {
-                  _focusedDay = focusedDay;
-                });
-              },
-              calendarStyle: const CalendarStyle(
-                todayDecoration: BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
-                selectedDecoration: BoxDecoration(color: Color(0xFF1E40AF), shape: BoxShape.circle),
-                defaultTextStyle: TextStyle(fontSize: 12),
-              ),
-              daysOfWeekStyle: const DaysOfWeekStyle(
-                weekdayStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                weekendStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+import '../services/api_service.dart';
 
 // SIDEBAR CLASSES (SideBar, SideBarItems) REMAIN UNCHANGED BELOW THIS POINT
 class SideBar extends StatefulWidget {
@@ -302,10 +28,26 @@ class _SideBarState extends State<SideBar> {
   String occupation = 'University Librarian';
 
   final sideBarItems = [
-    {'icon': 'assets/dashboard.png', 'title': 'Dashboard', 'page': const DashboardPage()},
-    {'icon': 'assets/analytics.png', 'title': 'Analytics', 'page': const AnalyticsPage()},
-    {'icon': 'assets/attendance.png', 'title': 'Attendance', 'page': const AttendancePage()},
-    {'icon': 'assets/import.png', 'title': 'Import', 'page': const ImportPlaceHolderClass()},
+    {
+      'icon': 'assets/dashboard.png',
+      'title': 'Dashboard',
+      'page': const DashboardPage()
+    },
+    {
+      'icon': 'assets/analytics.png',
+      'title': 'Analytics',
+      'page': const AnalyticsPage()
+    },
+    {
+      'icon': 'assets/attendance.png',
+      'title': 'Attendance',
+      'page': const AttendancePage()
+    },
+    {
+      'icon': 'assets/import.png',
+      'title': 'Import',
+      'page': const ImportPage()
+    },
   ];
 
   @override
@@ -352,24 +94,34 @@ class _SideBarState extends State<SideBar> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: <Widget>[
-                        Image.asset('assets/imageTwo.png', width: 75, height: 75),
+                        Image.asset('assets/imageTwo.png',
+                            width: 75, height: 75),
                         if (isFullyExpanded)
                           const Text(
                             'WVSU LIBRARY ATTENDANCE',
-                            style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 20,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 15),
                   Align(
-                    alignment: isExpanded ? Alignment.centerRight : Alignment.center,
+                    alignment:
+                        isExpanded ? Alignment.centerRight : Alignment.center,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: FloatingActionButton.small(
                         onPressed: _toggleSidebar,
-                        backgroundColor: const Color.fromARGB(255, 30, 100, 190),
-                        child: Icon(isExpanded ? Icons.chevron_left : Icons.chevron_right, color: Colors.white),
+                        backgroundColor:
+                            const Color.fromARGB(255, 30, 100, 190),
+                        child: Icon(
+                            isExpanded
+                                ? Icons.chevron_left
+                                : Icons.chevron_right,
+                            color: Colors.white),
                       ),
                     ),
                   ),
@@ -387,7 +139,8 @@ class _SideBarState extends State<SideBar> {
                         setState(() => selectedIndex = index);
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => item['page'] as Widget),
+                          MaterialPageRoute(
+                              builder: (context) => item['page'] as Widget),
                         );
                       },
                     );
@@ -396,7 +149,8 @@ class _SideBarState extends State<SideBar> {
               ),
             ),
             Padding(
-              padding: EdgeInsets.only(left: isFullyExpanded ? 20 : 0, bottom: 30),
+              padding:
+                  EdgeInsets.only(left: isFullyExpanded ? 20 : 0, bottom: 30),
               child: isFullyExpanded
                   ? ProfilePopUp(
                       child: Align(
@@ -414,15 +168,22 @@ class _SideBarState extends State<SideBar> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                Text(occupation, style: const TextStyle(color: Colors.white70, fontSize: 14.0)),
+                                Text(name,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                                Text(occupation,
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 14.0)),
                               ],
                             ),
                           ],
                         ),
                       ),
                     )
-                  : const CircleAvatar(radius: 26, backgroundImage: AssetImage('assets/profile.png')),
+                  : const CircleAvatar(
+                      radius: 26,
+                      backgroundImage: AssetImage('assets/profile.png')),
             ),
           ],
         ),
@@ -452,7 +213,8 @@ class SideBarItems extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isExpanded ? 25.0 : 8.0, vertical: 8.0),
+      padding: EdgeInsets.symmetric(
+          horizontal: isExpanded ? 25.0 : 8.0, vertical: 8.0),
       child: Container(
         decoration: isSelected
             ? BoxDecoration(
@@ -467,13 +229,19 @@ class SideBarItems extends StatelessWidget {
                 leading: SizedBox(
                   width: 32,
                   height: 32,
-                  child: Image.asset(assetPath, fit: BoxFit.contain, color: Colors.white),
+                  child: Image.asset(assetPath,
+                      fit: BoxFit.contain, color: Colors.white),
                 ),
-                title: Text(title, style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w300)),
+                title: Text(title,
+                    style: const TextStyle(
+                        fontSize: 24,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w300)),
                 onTap: onTap,
               )
             : IconButton(
-                icon: Image.asset(assetPath, width: 28, height: 28, color: Colors.white),
+                icon: Image.asset(assetPath,
+                    width: 28, height: 28, color: Colors.white),
                 iconSize: 32,
                 onPressed: onTap,
                 tooltip: title,
