@@ -74,6 +74,7 @@ flutter:
     - assets/Rectangle.jpg
     - assets/useradd.png
     - assets/import.png
+    - assets/acadsetup.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -225,7 +225,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     ),
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
-                      value: editSelectedCampus,
+                      initialValue: editSelectedCampus,
                       items: _campuses.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                       onChanged: (val) => setDialogState(() => editSelectedCampus = val),
                       decoration: InputDecoration(
@@ -357,7 +357,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                     const Text("Role Assignment in", style: TextStyle(fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 8),
                                     DropdownButtonFormField<String>(
-                                      value: _selectedCampus,
+                                      initialValue: _selectedCampus,
                                       decoration: _inputDecoration("e.g. Calinog Campus", errorText: _campusError),
                                       items: _campuses.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                                       onChanged: (val) => setState(() => _selectedCampus = val),

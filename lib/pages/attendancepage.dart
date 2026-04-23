@@ -433,7 +433,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // The fixed data table with Blue accent headers
   Widget _buildFixedDataTable(List<Map<String, dynamic>> attendanceData) {
     return DataTable(
-      headingRowColor: MaterialStateProperty.all(const Color(0xFFDDEAF8)), // Light blue background for header
+      headingRowColor: WidgetStateProperty.all(const Color(0xFFDDEAF8)), // Light blue background for header
       dataTextStyle: const TextStyle(fontSize: 14, color: Colors.black87),
       columnSpacing: 30, // Optimized spacing
       headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent, fontSize: 14), // Blue Accent Headers
