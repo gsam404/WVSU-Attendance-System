@@ -29,13 +29,14 @@ $conn->query("UPDATE Entry_Logs
               AND (Scan_Date < CURDATE() OR (Scan_Date = CURDATE() AND CURTIME() > '18:00:00'))");
 
 // 2. THE GATEKEEPER
+/* --- COMMENTED OUT FOR TESTING ---
 if ($current_time < "07:00:00" || $current_time > "18:00:00") {
     echo json_encode([
         "status" => "error", 
         "message" => "Library is CLOSED. Hours: 7:00 AM - 6:00 PM."
     ]);
     exit();
-}
+} */
 
 // 3. GET STUDENT INFO 
 // Added TRIM() in SQL to ensure database-side cleanup

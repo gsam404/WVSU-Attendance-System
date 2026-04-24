@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
         echo json_encode(["status" => "error", "message" => "CSV file is empty or unreadable."]);
         exit;
     }
-    $headers = array_map(fn($h) => strtolower(trim($h ?? '')), $headers);
+    $headers = array_map(fn($h) => strtolower(trim(str_replace("\xEF\xBB\xBF", '', $h ?? ''))), $headers);
 
     // Map DB columns to CSV indices
     $colMap = [

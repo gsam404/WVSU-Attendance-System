@@ -9,7 +9,7 @@ import './analyticspage.dart';
 import './addAdmin.dart';
 import './importpage.dart';
 import './dashboardPage.dart';
-
+import './acadsetuppage.dart';
 import '../services/api_service.dart';
 
 // SIDEBAR CLASSES (SideBar, SideBarItems) REMAIN UNCHANGED BELOW THIS POINT
@@ -45,8 +45,8 @@ class _SideBarState extends State<SideBar> {
     },
     {
       'icon': 'assets/acadsetup.png',
-      'title': 'Analytics',
-      'page': const AnalyticsPage()
+      'title': 'Academic Setup',
+      'page': const AcadSetupPage()
     },
     {
       'icon': 'assets/import.png',
