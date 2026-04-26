@@ -8,6 +8,16 @@ date_default_timezone_set('Asia/Manila');
 
 include 'db_connect.php';
 
+// 2. THE GATEKEEPER
+/* --- COMMENTED OUT FOR TESTING ---
+if ($current_time < "07:00:00" || $current_time > "18:00:00") {
+    echo json_encode([
+        "status" => "error", 
+        "message" => "Library is CLOSED. Hours: 7:00 AM - 6:00 PM."
+    ]);
+    exit();
+} */
+
 // --- FIX 2: SYNC DATABASE SESSION TIME ---
 $conn->query("SET time_zone = '+08:00'");
 
@@ -40,7 +50,7 @@ if ($current_time < "07:00:00" || $current_time > "18:00:00") {
 
 // 3. GET STUDENT INFO 
 // Added TRIM() in SQL to ensure database-side cleanup
-$stmt = $conn->prepare("SELECT Student_ID, First_Name, Last_Name, Program FROM Students WHERE TRIM(Student_ID) = ? LIMIT 1");
+$stmt = $conn->prepare("SELECT Student_Number, First_Name, Last_Name, Program FROM Students WHERE TRIM(Student_Number) = ? LIMIT 1");
 $stmt->bind_param("s", $scanned_id);
 $stmt->execute();
 $student_res = $stmt->get_result();
@@ -52,12 +62,12 @@ if ($student_res->num_rows === 0) {
 }
 
 $student = $student_res->fetch_assoc();
-$s_id = $student['Student_ID'];
+$s_id = $student['Student_Number'];
 $full_name = $student['First_Name'] . " " . $student['Last_Name'];
 $program = $student['Program'] ?? 'No Program';
 
 // 4. CHECK FOR OPEN SESSION
-$check_stmt = $conn->prepare("SELECT Log_ID, Time_In FROM Entry_Logs WHERE Student_ID = ? AND Scan_Date = CURDATE() AND Time_Out IS NULL LIMIT 1");
+$check_stmt = $conn->prepare("SELECT Log_ID, Time_In FROM Entry_Logs WHERE Student_Number = ? AND Scan_Date = CURDATE() AND Time_Out IS NULL LIMIT 1");
 $check_stmt->bind_param("s", $s_id);
 $check_stmt->execute();
 $open_log = $check_stmt->get_result()->fetch_assoc();
@@ -88,7 +98,7 @@ if ($open_log) {
     }
 } else {
     // --- ACTION: LOG IN ---
-    $ins = $conn->prepare("INSERT INTO Entry_Logs (Student_ID, Scan_Date, Time_In, Status) VALUES (?, ?, ?, 'Active')");
+    $ins = $conn->prepare("INSERT INTO Entry_Logs (Student_Number, Scan_Date, Time_In, Status) VALUES (?, ?, ?, 'Active')");
     $ins->bind_param("sss", $s_id, $current_date, $current_time);
     
     if ($ins->execute()) {

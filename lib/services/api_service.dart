@@ -7,10 +7,10 @@ class ApiService {
   // Use your local IP address for physical devices/Web
   // Use 10.0.2.2 for Android Emulator
   final String baseUrl = kIsWeb
-      ? 'http://192.168.254.120/libgate_api'
+      ? 'http://192.168.1.3/libgate_api'
       : Platform.isAndroid
           ? 'http://10.0.2.2/libgate_api'
-          : 'http://192.168.254.120/libgate_api';
+          : 'http://192.168.1.3/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
@@ -87,7 +87,7 @@ class ApiService {
 
   // --- 4. GET ANALYTICS (For the Analytics Page) ---
   Future<Map<String, dynamic>?> getAnalytics() async {
-    final String apiUrl = '$baseUrl/analytics.php';
+    final String apiUrl = '$baseUrl/get_analytics.php';
 
     try {
       final response =
