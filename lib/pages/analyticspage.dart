@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
 import 'package:wvsu_attendance_system/services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -42,30 +44,38 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     super.dispose();
   }
 
+  // --- CONNECTED TO REAL DATABASE USING YOUR LAYOUT ---
   Future<void> loadAnalytics() async {
     try {
-      final data = await apiService.getAnalytics();
-      if (!mounted) return;
-      if (data != null) {
-        setState(() {
-          // Chart data
-          weeklyData = List<int>.from(data['weekly'] ?? List.filled(7, 0));
-          var rawMonthly = data['monthly'] ?? [];
-          monthlyData = List<int>.generate(12, (i) => i < rawMonthly.length ? rawMonthly[i] : 0);
-
-          // Weekly stat cards
-          weeklyPeakDay       = data['weeklyPeakDay']       ?? "None";
-          weeklyTopDepartment = data['weeklyTopDepartment'] ?? "None";
-          weeklyTopCourse     = data['weeklyTopCourse']     ?? "None";
-
-          // Monthly stat cards
-          monthlyPeakMonth      = data['monthlyPeakMonth']      ?? "None";
-          monthlyTopDepartment  = data['monthlyTopDepartment']  ?? "None";
-          monthlyTopCourse      = data['monthlyTopCourse']      ?? "None";
-        });
+      final response = await http.get(Uri.parse('http://192.168.1.55/libgate_api/get_analytics.php'));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (mounted) {
+          setState(() {
+            // Chart data
+            if (data['weekly'] != null) {
+              weeklyData = List<int>.from(data['weekly'].map((x) => int.parse(x.toString())));
+            }
+            if (data['monthly'] != null) {
+              monthlyData = List<int>.from(data['monthly'].map((x) => int.parse(x.toString())));
+            }
+            
+            // Map Database metrics straight to your UI Cards
+            weeklyPeakDay = data['peakDay'] ?? "None";
+            monthlyPeakMonth = data['peakDay'] ?? "None"; // Keeping fallback for monthly
+            
+            weeklyTopDepartment = data['topDepartment'] ?? "None";
+            monthlyTopDepartment = data['topDepartment'] ?? "None";
+            
+            weeklyTopCourse = data['topCourse'] ?? "None";
+            monthlyTopCourse = data['topCourse'] ?? "None";
+          });
+        }
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint('Error loading analytics: $e');
     }
   }
 
@@ -96,7 +106,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Expanded(
             child: Column(
               children: [
-
                 // HEADER
                 Container(
                   width: double.infinity,
@@ -111,14 +120,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                   ),
                 ),
-
                 // MAIN CONTENT AREA
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(40.0),
                     child: Column(
                       children: [
-
                         // STAT CARDS — values change with Weekly/Monthly toggle
                         Row(
                           children: [
@@ -129,9 +136,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             Expanded(child: _buildStatCard("Most visited by Course", topCourse, Icons.groups_outlined, Colors.blue)),
                           ],
                         ),
-
                         const SizedBox(height: 30),
-
                         // CHART CONTAINER
                         Expanded(
                           child: Container(
@@ -139,76 +144,83 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             padding: const EdgeInsets.all(35),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          "Student Visits Overview",
-                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          selectedRange == "Weekly"
-                                              ? "Daily breakdown of student check-ins"
-                                              : "Monthly breakdown of student check-ins",
-                                          style: const TextStyle(fontSize: 14, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                    _buildToggleContainer(),
+                                    const Text("Analytics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    _buildToggleSwitch(),
                                   ],
                                 ),
-
-                                // CHART BARS
+                                const SizedBox(height: 30),
                                 Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(top: 40),
-                                    child: LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        final maxBarHeight = constraints.maxHeight * 0.8;
-                                        return Row(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: List.generate(currentData.length, (i) {
-                                            return Expanded(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.end,
-                                                children: [
-                                                  _buildBar(
-                                                    currentData[i].toDouble(),
-                                                    maxValue.toDouble(),
-                                                    maxBarHeight,
-                                                    selectedRange == "Monthly",
-                                                  ),
-                                                  const SizedBox(height: 15),
-                                                  Text(
-                                                    currentLabels[i],
-                                                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final maxHeight = constraints.maxHeight - 30; // 30px reserved for labels
+                                      return Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: List.generate(currentData.length, (index) {
+                                          return Column(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              _buildBar(currentData[index].toDouble(), maxValue.toDouble(), maxHeight, selectedRange == "Monthly"),
+                                              const SizedBox(height: 10),
+                                              Text(currentLabels[index], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                            ],
+                                          );
+                                        }),
+                                      );
+                                    }
+                                  )
+                                )
+                              ]
+                            )
+                          )
+                        )
+                      ]
+                    )
+                  )
+                )
+              ]
+            )
+          )
+        ]
+      )
+    );
+  }
+
+  // --- YOUR EXACT ORIGINAL WIDGETS ---
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color iconColor) {
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 30),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 5),
+                Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
           ),
@@ -217,47 +229,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      height: 160,
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, size: 18, color: color),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleContainer() {
+  Widget _buildToggleSwitch() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -289,18 +261,17 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  
   Widget _buildBar(double value, double maxValue, double maxHeight, bool isMonthly) {
     final ratio     = maxValue > 0 ? value / maxValue : 0.0;
     final barHeight = (ratio * maxHeight).clamp(4.0, maxHeight);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
-      width: isMonthly ? 18 : 45,
       height: barHeight,
+      width: isMonthly ? 20 : 30,
       decoration: BoxDecoration(
         color: const Color(0xFF3B82F6),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

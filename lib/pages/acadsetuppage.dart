@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
 
 class CourseModel {
+  int? id; // Added Database ID
   String name;
   String code;
-  CourseModel({required this.name, required this.code});
+  CourseModel({this.id, required this.name, required this.code});
 }
 
 class DepartmentModel {
+  int? id; // Added Database ID
   String name;
   String code;
   bool isExpanded;
@@ -18,6 +22,7 @@ class DepartmentModel {
   TextEditingController courseCodeCtrl;
 
   DepartmentModel({
+    this.id,
     required this.name,
     required this.code,
     this.isExpanded = false,
@@ -43,6 +48,11 @@ class AcadSetupPage extends StatefulWidget {
 
 class _AcadSetupPageState extends State<AcadSetupPage> {
   final List<DepartmentModel> _departments = [];
+  
+  // IMPORTANT: Change this to your computer's IP address if testing on a real phone!
+  final String apiUrl = 'http://192.168.1.55/libgate_api/academic_api.php';
+  
+  bool _isLoading = true;
 
   final _deptNameCtrl = TextEditingController();
   final _deptCodeCtrl = TextEditingController();
@@ -64,42 +74,135 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     }).toList();
   }
 
-  void _saveDepartment() {
+  @override
+  void initState() {
+    super.initState();
+    _fetchData(); // Load data from DB when screen opens
+  }
+
+  // --- API CALLS ---
+
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(Uri.parse('$apiUrl?action=fetch'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          _departments.clear();
+          for (var d in data['data']) {
+            List<CourseModel> coursesList = [];
+            if (d['courses'] != null) {
+              for (var c in d['courses']) {
+                coursesList.add(CourseModel(
+                    id: int.parse(c['id'].toString()),
+                    name: c['name'],
+                    code: c['code']));
+              }
+            }
+            _departments.add(DepartmentModel(
+              id: int.parse(d['id'].toString()),
+              name: d['name'],
+              code: d['code'],
+              courses: coursesList,
+            ));
+          }
+        }
+      }
+    } catch (e) {
+      _showSnack('Error loading data from database');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveDepartment() async {
     final name = _deptNameCtrl.text.trim();
     final code = _deptCodeCtrl.text.trim();
     if (name.isEmpty || code.isEmpty) return;
 
-    setState(() {
-      _departments.add(DepartmentModel(name: name, code: code));
-      _deptNameCtrl.clear();
-      _deptCodeCtrl.clear();
-    });
-
-    _showSnack('Department "$code" added successfully.');
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'add_dept',
+        'name': name,
+        'code': code
+      });
+      final data = jsonDecode(response.body);
+      
+      if (data['status'] == 'success') {
+        setState(() {
+          _departments.add(DepartmentModel(id: data['id'], name: name, code: code));
+          _deptNameCtrl.clear();
+          _deptCodeCtrl.clear();
+        });
+        _showSnack('Department "$code" added successfully.');
+      } else {
+        _showSnack('Failed to save to database.');
+      }
+    } catch (e) {
+      _showSnack('Network Error: Could not connect to server.');
+    }
   }
 
-  void _deleteDepartment(DepartmentModel dept) {
-    setState(() => _departments.remove(dept));
-    dept.dispose();
-    _showSnack('Department "${dept.code}" removed.');
+  Future<void> _deleteDepartment(DepartmentModel dept) async {
+    if (dept.id == null) return;
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'delete_dept',
+        'id': dept.id.toString()
+      });
+      final data = jsonDecode(response.body);
+      if (data['status'] == 'success') {
+        setState(() => _departments.remove(dept));
+        dept.dispose();
+        _showSnack('Department "${dept.code}" removed.');
+      }
+    } catch (e) {
+      _showSnack('Failed to delete.');
+    }
   }
 
-  void _addCourse(DepartmentModel dept) {
+  Future<void> _addCourse(DepartmentModel dept) async {
     final name = dept.courseNameCtrl.text.trim();
     final code = dept.courseCodeCtrl.text.trim();
-    if (name.isEmpty || code.isEmpty) return;
+    if (name.isEmpty || code.isEmpty || dept.id == null) return;
 
-    setState(() {
-      dept.courses.add(CourseModel(name: name, code: code));
-      dept.courseNameCtrl.clear();
-      dept.courseCodeCtrl.clear();
-    });
-
-    _showSnack('Course "$code" added under ${dept.code}.');
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'add_course',
+        'department_id': dept.id.toString(),
+        'name': name,
+        'code': code
+      });
+      final data = jsonDecode(response.body);
+      
+      if (data['status'] == 'success') {
+        setState(() {
+          dept.courses.add(CourseModel(id: data['id'], name: name, code: code));
+          dept.courseNameCtrl.clear();
+          dept.courseCodeCtrl.clear();
+        });
+        _showSnack('Course "$code" added under ${dept.code}.');
+      }
+    } catch (e) {
+      _showSnack('Failed to add course.');
+    }
   }
 
-  void _deleteCourse(DepartmentModel dept, CourseModel course) {
-    setState(() => dept.courses.remove(course));
+  Future<void> _deleteCourse(DepartmentModel dept, CourseModel course) async {
+    if (course.id == null) return;
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'delete_course',
+        'id': course.id.toString()
+      });
+      final data = jsonDecode(response.body);
+      if (data['status'] == 'success') {
+        setState(() => dept.courses.remove(course));
+      }
+    } catch (e) {
+      _showSnack('Failed to delete course.');
+    }
   }
 
   void _editDepartment(DepartmentModel dept) {
@@ -131,11 +234,26 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
-            onPressed: () {
-              setState(() {
-                dept.name = nameCtrl.text.trim();
-                dept.code = codeCtrl.text.trim();
-              });
+            onPressed: () async {
+              // Save edits to database
+              try {
+                 final response = await http.post(Uri.parse(apiUrl), body: {
+                  'action': 'edit_dept',
+                  'id': dept.id.toString(),
+                  'name': nameCtrl.text.trim(),
+                  'code': codeCtrl.text.trim()
+                });
+                final data = jsonDecode(response.body);
+                if (data['status'] == 'success') {
+                  setState(() {
+                    dept.name = nameCtrl.text.trim();
+                    dept.code = codeCtrl.text.trim();
+                  });
+                  _showSnack('Department updated.');
+                }
+              } catch (e) {
+                 _showSnack('Failed to update.');
+              }
               Navigator.pop(context);
             },
             child: const Text('Save', style: TextStyle(color: Colors.white)),
@@ -193,7 +311,9 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
 
                 // BODY
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator()) 
+                    : SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

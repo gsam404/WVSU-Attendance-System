@@ -17,17 +17,52 @@ class _AttendancePageState extends State<AttendancePage> {
   String? _selectedFilterValue;
 
   final List<String> _filterCategories = ['Program', 'Department', 'School Year', 'Month'];
-  final List<String> _programs = ['All Programs', 'BSCS', 'BSIT', 'BSIS', 'BLIS'];
-  final List<String> _departments = ['All Departments', 'CAS', 'CBM', 'COD', 'COE', 'CICT', 'COL', 'COM', 'CON', 'PESCAR'];
   final List<String> _schoolYears = ['2024-2025', '2025-2026', '2026-2027'];
   final List<String> _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Now dynamically loaded from the database!
+  List<String> _programs = ['All Programs'];
+  List<String> _departments = ['All Departments'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAcademicFilters();
+  }
+
+  // Fetches the real Departments and Courses from your Academic Setup API
+  Future<void> _fetchAcademicFilters() async {
+    try {
+      final response = await http.get(Uri.parse('http://192.168.1.55/libgate_api/academic_api.php?action=fetch'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          setState(() {
+            _departments = ['All Departments'];
+            _programs = ['All Programs'];
+            
+            for (var dept in data['data']) {
+              _departments.add(dept['code']); 
+              if (dept['courses'] != null) {
+                for (var course in dept['courses']) {
+                  _programs.add(course['code']); 
+                }
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading filters: $e");
+    }
+  }
 
   Stream<List<Map<String, dynamic>>> _getRealTimeAttendanceData() async* {
     while (true) {
       try {
-        // Attempt to fetch data from the server
+        // Attempt to fetch data from the server (Updated IP to your real backend!)
         final response = await http.get(
-          Uri.parse('http://10.0.2.2/get_attendance.php')
+          Uri.parse('http://192.168.1.55/libgate_api/get_attendance.php')
         ).timeout(const Duration(seconds: 3));
 
         if (response.statusCode == 200) {
@@ -173,7 +208,7 @@ class _AttendancePageState extends State<AttendancePage> {
                           const avgVisits = '1.3 visits';
                           const peakHour = '11:00am-12:40pm';
 
-                          return ListView( // Use ListView to prevent layout overflow
+                          return ListView( 
                             children: [
                               _buildInteractiveFilters(),
                               const SizedBox(height: 20),
@@ -185,6 +220,7 @@ class _AttendancePageState extends State<AttendancePage> {
                               const SizedBox(height: 12),
                               // Main Data Table within a container for styling
                               Container(
+                                width: double.infinity, // <-- ADDED THIS to force container stretch
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
@@ -196,8 +232,18 @@ class _AttendancePageState extends State<AttendancePage> {
                                     )
                                   ]
                                 ),
-                                clipBehavior: Clip.antiAlias, // Ensures internal content (table header) stays within bounds
-                                child: _buildFixedDataTable(attendanceData),
+                                clipBehavior: Clip.antiAlias,
+                                child: LayoutBuilder( // <-- ADDED THIS to force table width
+                                  builder: (context, constraints) {
+                                    return SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(minWidth: constraints.maxWidth), // Matches parent width!
+                                        child: _buildFixedDataTable(attendanceData),
+                                      ),
+                                    );
+                                  }
+                                ),
                               ),
                               const SizedBox(height: 16),
                               _buildPagination(),
@@ -219,20 +265,18 @@ class _AttendancePageState extends State<AttendancePage> {
 
   // --- COMPONENT WIDGETS ---
 
-  // Interactive filters section (Date, Category, Export)
   Widget _buildInteractiveFilters() {
     return Wrap(
       spacing: 12, 
       runSpacing: 12, 
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        // FIXED CALENDAR SELECTOR (Original design, full width card)
         InkWell(
           onTap: () => _pickDate(context),
           child: _buildSimpleFilterCard(
-            icon: Icons.calendar_today, // Simple icon, not filled
+            icon: Icons.calendar_today,
             label: _selectedDate == null 
-              ? 'Feb 06, 2026' // Date text from Figma
+              ? 'Feb 06, 2026'
               : '${_selectedDate!.month}/${_selectedDate!.day}/${_selectedDate!.year}',
           ),
         ),
@@ -244,13 +288,12 @@ class _AttendancePageState extends State<AttendancePage> {
           onChanged: (val) {
             setState(() {
               _selectedFilterCategory = val;
-              _selectedFilterValue = null; // Reset value when category changes
-              _selectedDate = null; // Clear date filter if using category
+              _selectedFilterValue = null;
+              _selectedDate = null; 
             });
           },
         ),
 
-        // Dependent dropdown, only visible if a category is selected
         if (_selectedFilterCategory != null)
           _buildCustomDropdown(
             hint: 'Select $_selectedFilterCategory',
@@ -259,7 +302,6 @@ class _AttendancePageState extends State<AttendancePage> {
             onChanged: (val) => setState(() => _selectedFilterValue = val),
           ),
 
-        // Spacer to push the Export button to the right
         const Spacer(),
 
         ElevatedButton.icon(
@@ -267,7 +309,7 @@ class _AttendancePageState extends State<AttendancePage> {
           icon: const Icon(Icons.download, size: 16, color: Colors.white),
           label: const Text('Export CSV', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent, // Blue accent background
+            backgroundColor: Colors.blueAccent,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -277,7 +319,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // Helper widget for non-dropdown filter cards (Date picker)
   Widget _buildSimpleFilterCard({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -300,7 +341,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // Helper for custom dropdown styling
   Widget _buildCustomDropdown({
     required String hint,
     required String? value,
@@ -332,18 +372,17 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // Search Bar aligned to the right side
   Widget _buildSearchBar() {
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
-        width: 300, // Matches Figma approximate width
+        width: 300, 
         height: 44,
         child: TextField(
           decoration: InputDecoration(
             hintText: 'Search Student Name or ID...',
             hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-            suffixIcon: const Icon(Icons.search, size: 20, color: Colors.blueAccent), // Blue accent magnifying glass
+            suffixIcon: const Icon(Icons.search, size: 20, color: Colors.blueAccent),
             filled: true, 
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -361,10 +400,9 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // FIXED Metrics table (Large/Width card style matching Figma)
   Widget _buildMetricsTable(String total, String dept, String course, String avg, String peak) {
     return Container(
-      width: double.infinity, // Spans full content width
+      width: double.infinity, 
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(12),
@@ -373,7 +411,6 @@ class _AttendancePageState extends State<AttendancePage> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Header Row with Blue Text on Light Blue background
           Container(
             color: const Color(0xFFDDEAF8),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -385,18 +422,16 @@ class _AttendancePageState extends State<AttendancePage> {
               ],
             ),
           ),
-          // Data Rows
           _buildMetricRow('Total entry', total),
           _buildMetricRow('Most visited by department', dept),
           _buildMetricRow('Most visited by course', course),
           _buildMetricRow('Average visits per student', avg),
-          _buildMetricRow('Peak traffic hour', peak, isLast: true), // Last row doesn't have a bottom border
+          _buildMetricRow('Peak traffic hour', peak, isLast: true),
         ],
       ),
     );
   }
 
-  // Helper Widget for a single row in the Metrics table
   Widget _buildMetricRow(String metric, String value, {bool isLast = false}) {
     return Container(
       decoration: BoxDecoration(border: isLast ? null : Border(bottom: BorderSide(color: Colors.grey.shade200))),
@@ -411,7 +446,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // Basic Pagination Controls
   Widget _buildPagination() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -430,13 +464,12 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // The fixed data table with Blue accent headers
   Widget _buildFixedDataTable(List<Map<String, dynamic>> attendanceData) {
     return DataTable(
-      headingRowColor: WidgetStateProperty.all(const Color(0xFFDDEAF8)), // Light blue background for header
+      headingRowColor: WidgetStateProperty.all(const Color(0xFFDDEAF8)), 
       dataTextStyle: const TextStyle(fontSize: 14, color: Colors.black87),
-      columnSpacing: 30, // Optimized spacing
-      headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent, fontSize: 14), // Blue Accent Headers
+      columnSpacing: 30, 
+      headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent, fontSize: 14),
       columns: const [
         DataColumn(label: Text('Date')),
         DataColumn(label: Text('Sign In')),
