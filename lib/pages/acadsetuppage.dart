@@ -50,7 +50,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   final List<DepartmentModel> _departments = [];
   
   // IMPORTANT: Change this to your computer's IP address if testing on a real phone!
-  final String apiUrl = 'http://192.168.1.55/libgate_api/academic_api.php';
+  final String apiUrl = 'http://localhost/libgate_api/academic_api.php';
   
   bool _isLoading = true;
 

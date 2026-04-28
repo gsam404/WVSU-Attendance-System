@@ -30,11 +30,10 @@ class _DashboardPageState extends State<DashboardPage> {
     _fetchStats();
   }
 
-  // --- NEW DATABASE CONNECTION (YOUR EXACT LAYOUT REMAINS BELOW) ---
   Future<void> _fetchStats() async {
     try {
-      final response1 = await http.get(Uri.parse('http://192.168.1.55/libgate_api/get_dashboard_stats.php'));
-      final response2 = await http.get(Uri.parse('http://192.168.1.55/libgate_api/get_analytics.php'));
+      final response1 = await http.get(Uri.parse('http://localhost/libgate_api/get_dashboard_stats.php'));
+      final response2 = await http.get(Uri.parse('http://localhost/libgate_api/get_analytics.php'));
 
       if (response1.statusCode == 200 && response2.statusCode == 200) {
         final data1 = jsonDecode(response1.body);
@@ -43,7 +42,7 @@ class _DashboardPageState extends State<DashboardPage> {
         if (data1['status'] == 'success') {
           final List<dynamic> pieData = data1['pie_stats'] ?? [];
           final List<dynamic> rawWeekly = data2['weekly'] ?? [];
-          
+
           final List<Color> colors = [
             const Color(0xFF3B82F6), Colors.orange, Colors.green,
             Colors.cyan, Colors.red, Colors.purple, Colors.amber,
@@ -64,7 +63,7 @@ class _DashboardPageState extends State<DashboardPage> {
               tempSections.add(PieChartSectionData(
                 color: colors[i % colors.length],
                 value: val,
-                radius: 20,
+                radius: 35, // FIX: increased from 20 to fill the space
                 showTitle: false,
               ));
               tempLabels.add({
@@ -75,10 +74,11 @@ class _DashboardPageState extends State<DashboardPage> {
             }
           }
 
-          String highestDept = "No Logs";
+          String highestDept = "None";
           if (tempLabels.isNotEmpty) {
-             var sorted = List.from(tempLabels)..sort((a, b) => double.parse(b['pct']).compareTo(double.parse(a['pct'])));
-             highestDept = sorted.first['label'];
+            var sorted = List.from(tempLabels)
+              ..sort((a, b) => double.parse(b['pct']).compareTo(double.parse(a['pct'])));
+            highestDept = sorted.first['label'];
           }
 
           if (mounted) {
@@ -87,12 +87,12 @@ class _DashboardPageState extends State<DashboardPage> {
               topDept = highestDept;
               pieSections = tempSections;
               pieLabels = tempLabels;
-              
+
               weeklyData = List<int>.generate(
                 7,
                 (i) => i < rawWeekly.length ? (rawWeekly[i] as num).toInt() : 0,
               );
-              
+
               isLoading = false;
             });
           }
@@ -119,7 +119,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // --- YOUR EXACT LAYOUT BEGINS HERE ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -252,18 +251,28 @@ class _DashboardPageState extends State<DashboardPage> {
             Expanded(
               child: Row(
                 children: [
+                  // FIX: centered pie chart with no hole (centerSpaceRadius: 0)
                   SizedBox(
                     width: 70,
                     height: 70,
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
-                        : PieChart(
-                            PieChartData(
-                              sectionsSpace: 0,
-                              centerSpaceRadius: 15,
-                              sections: pieSections.isEmpty
-                                  ? [PieChartSectionData(color: Colors.grey.shade300, value: 1, radius: 38, showTitle: false)]
-                                  : pieSections,
+                        : Center(
+                            child: PieChart(
+                              PieChartData(
+                                sectionsSpace: 2,
+                                centerSpaceRadius: 0, // FIX: removed hole
+                                sections: pieSections.isEmpty
+                                    ? [
+                                        PieChartSectionData(
+                                          color: Colors.grey.shade300,
+                                          value: 1,
+                                          radius: 35,
+                                          showTitle: false,
+                                        )
+                                      ]
+                                    : pieSections,
+                              ),
                             ),
                           ),
                   ),
@@ -276,7 +285,12 @@ class _DashboardPageState extends State<DashboardPage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: pieLabels.isEmpty
-                                  ? [const Text("No data today", style: TextStyle(fontSize: 10, color: Colors.grey))]
+                                  ? [
+                                      const Text(
+                                        "No data today",
+                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                      )
+                                    ]
                                   : pieLabels.map((item) {
                                       return Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -329,7 +343,9 @@ class _DashboardPageState extends State<DashboardPage> {
       7,
       (i) => FlSpot(i.toDouble(), weeklyData[i].toDouble()),
     );
-    final maxY = weeklyData.isEmpty ? 1.0 : weeklyData.reduce((a, b) => a > b ? a : b).toDouble();
+    final maxY = weeklyData.isEmpty
+        ? 1.0
+        : weeklyData.reduce((a, b) => a > b ? a : b).toDouble();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -357,27 +373,47 @@ class _DashboardPageState extends State<DashboardPage> {
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                        getDrawingHorizontalLine: (value) =>
+                            FlLine(color: Colors.grey.shade200, strokeWidth: 1),
                       ),
                       titlesData: FlTitlesData(
                         show: true,
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
+                            interval: 1, // FIX: force one label per integer step
+                            reservedSize: 28,
                             getTitlesWidget: (value, meta) {
-                              if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                              // FIX: skip non-integer values to prevent duplicate labels
+                              if (value != value.roundToDouble()) {
+                                return const SizedBox();
+                              }
+                              final index = value.toInt();
+                              if (index >= 0 && index < labels.length) {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8),
-                                  child: Text(labels[value.toInt()], style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  child: Text(
+                                    labels[index],
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 );
                               }
                               return const SizedBox();
                             },
                           ),
                         ),
-                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                       ),
                       borderData: FlBorderData(show: false),
                       minX: 0,

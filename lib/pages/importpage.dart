@@ -170,7 +170,7 @@ class _ImportPageState extends State<ImportPage> {
       backgroundColor: const Color(0xFFE5E5E5),
       body: Row(
         children: [
-          const SideBar(selectedIndex: 3),
+          const SideBar(selectedIndex: 4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

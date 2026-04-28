@@ -15,12 +15,10 @@ class AnalyticsPage extends StatefulWidget {
 class _AnalyticsPageState extends State<AnalyticsPage> {
   final ApiService apiService = ApiService();
 
-  // Weekly stat card values
   String weeklyPeakDay = "None";
   String weeklyTopDepartment = "None";
   String weeklyTopCourse = "None";
 
-  // Monthly stat card values
   String monthlyPeakMonth = "None";
   String monthlyTopDepartment = "None";
   String monthlyTopCourse = "None";
@@ -44,33 +42,35 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     super.dispose();
   }
 
-  // --- CONNECTED TO REAL DATABASE USING YOUR LAYOUT ---
   Future<void> loadAnalytics() async {
     try {
-      final response = await http.get(Uri.parse('http://192.168.1.55/libgate_api/get_analytics.php'));
-      
+      final response = await http.get(
+        Uri.parse('http://localhost/libgate_api/get_analytics.php'),
+      );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         if (mounted) {
           setState(() {
-            // Chart data
             if (data['weekly'] != null) {
-              weeklyData = List<int>.from(data['weekly'].map((x) => int.parse(x.toString())));
+              weeklyData = List<int>.from(
+                data['weekly'].map((x) => int.parse(x.toString())),
+              );
             }
             if (data['monthly'] != null) {
-              monthlyData = List<int>.from(data['monthly'].map((x) => int.parse(x.toString())));
+              monthlyData = List<int>.from(
+                data['monthly'].map((x) => int.parse(x.toString())),
+              );
             }
-            
-            // Map Database metrics straight to your UI Cards
-            weeklyPeakDay = data['peakDay'] ?? "None";
-            monthlyPeakMonth = data['peakDay'] ?? "None"; // Keeping fallback for monthly
-            
-            weeklyTopDepartment = data['topDepartment'] ?? "None";
-            monthlyTopDepartment = data['topDepartment'] ?? "None";
-            
-            weeklyTopCourse = data['topCourse'] ?? "None";
-            monthlyTopCourse = data['topCourse'] ?? "None";
+
+            weeklyPeakDay = data['weeklyPeakDay'] ?? "None";
+            weeklyTopDepartment = data['weeklyTopDepartment'] ?? "None";
+            weeklyTopCourse = data['weeklyTopCourse'] ?? "None";
+
+            monthlyPeakMonth = data['monthlyPeakMonth'] ?? "None";
+            monthlyTopDepartment = data['monthlyTopDepartment'] ?? "None";
+            monthlyTopCourse = data['monthlyTopCourse'] ?? "None";
           });
         }
       }
@@ -79,24 +79,33 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }
   }
 
-  // Returns the correct stat card values based on selected toggle
-  String get peakLabel      => selectedRange == "Weekly" ? weeklyPeakDay      : monthlyPeakMonth;
-  String get topDepartment  => selectedRange == "Weekly" ? weeklyTopDepartment : monthlyTopDepartment;
-  String get topCourse      => selectedRange == "Weekly" ? weeklyTopCourse     : monthlyTopCourse;
-
-  // Peak card title changes: "Peak traffic day" vs "Peak traffic month"
-  String get peakCardTitle  => selectedRange == "Weekly" ? "Peak traffic day" : "Peak traffic month";
+  String get peakLabel =>
+      selectedRange == "Weekly" ? weeklyPeakDay : monthlyPeakMonth;
+  String get topDepartment =>
+      selectedRange == "Weekly"
+          ? weeklyTopDepartment
+          : monthlyTopDepartment;
+  String get topCourse =>
+      selectedRange == "Weekly" ? weeklyTopCourse : monthlyTopCourse;
+  String get peakCardTitle =>
+      selectedRange == "Weekly"
+          ? "Peak traffic day"
+          : "Peak traffic month";
 
   @override
   Widget build(BuildContext context) {
-    final List<String> weeklyLabels  = ["S", "M", "T", "W", "TH", "F", "S"];
-    final List<String> monthlyLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    final weeklyLabels = ["S", "M", "T", "W", "TH", "F", "S"];
+    final monthlyLabels = [
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
 
-    final currentLabels = selectedRange == "Weekly" ? weeklyLabels : monthlyLabels;
-    final currentData   = selectedRange == "Weekly" ? weeklyData   : monthlyData;
-
-    // Find the max value to scale bars accurately relative to real data
-    final maxValue = currentData.isEmpty ? 1 : currentData.reduce((a, b) => a > b ? a : b);
+    final currentLabels =
+        selectedRange == "Weekly" ? weeklyLabels : monthlyLabels;
+    final currentData =
+        selectedRange == "Weekly" ? weeklyData : monthlyData;
+    final maxValue =
+        currentData.isEmpty ? 1 : currentData.reduce((a, b) => a > b ? a : b);
 
     return Scaffold(
       backgroundColor: const Color(0xFFE5E5E5),
@@ -110,7 +119,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 Container(
                   width: double.infinity,
                   color: const Color(0xFFD6D6D6),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 40, vertical: 25),
                   child: const Text(
                     "Analytics",
                     style: TextStyle(
@@ -120,108 +130,205 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                   ),
                 ),
-                // MAIN CONTENT AREA
+
+                // CONTENT
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(40.0),
+                    padding: const EdgeInsets.all(40),
                     child: Column(
                       children: [
-                        // STAT CARDS — values change with Weekly/Monthly toggle
+                        //  card
                         Row(
                           children: [
-                            Expanded(child: _buildStatCard(peakCardTitle, peakLabel, Icons.wb_sunny_outlined, Colors.orange)),
-                            const SizedBox(width: 25),
-                            Expanded(child: _buildStatCard("Most visited by Department", topDepartment, Icons.apartment, Colors.green)),
-                            const SizedBox(width: 25),
-                            Expanded(child: _buildStatCard("Most visited by Course", topCourse, Icons.groups_outlined, Colors.blue)),
+                            Expanded(
+                              child: SizedBox(
+                                height: 155,
+                                child: _buildStatCard(
+                                  peakCardTitle,
+                                  peakLabel,
+                                  Icons.wb_sunny_outlined,
+                                  Colors.orange,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: SizedBox(
+                                height: 155,
+                                child: _buildStatCard(
+                                  "Most visited by Department",
+                                  topDepartment,
+                                  Icons.apartment,
+                                  Colors.green,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: SizedBox(
+                                height: 155,
+                                child: _buildStatCard(
+                                  "Most visited by Course",
+                                  topCourse,
+                                  Icons.groups_outlined,
+                                  Colors.blue,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
+
                         const SizedBox(height: 30),
-                        // CHART CONTAINER
+
+                        // CHART
                         Expanded(
                           child: Container(
-                            width: double.infinity,
                             padding: const EdgeInsets.all(35),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text("Analytics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          "Student Visits Overview",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          selectedRange == "Weekly"
+                                              ? "Daily breakdown this week"
+                                              : "Monthly breakdown this year",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     _buildToggleSwitch(),
                                   ],
                                 ),
                                 const SizedBox(height: 30),
+
                                 Expanded(
                                   child: LayoutBuilder(
                                     builder: (context, constraints) {
-                                      final maxHeight = constraints.maxHeight - 30; // 30px reserved for labels
+                                      final maxHeight =
+                                          constraints.maxHeight - 30;
+
                                       return Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: List.generate(currentData.length, (index) {
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: List.generate(
+                                            currentData.length, (i) {
                                           return Column(
-                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
                                             children: [
-                                              _buildBar(currentData[index].toDouble(), maxValue.toDouble(), maxHeight, selectedRange == "Monthly"),
+                                              _buildBar(
+                                                currentData[i].toDouble(),
+                                                maxValue.toDouble(),
+                                                maxHeight,
+                                                selectedRange ==
+                                                    "Monthly",
+                                              ),
                                               const SizedBox(height: 10),
-                                              Text(currentLabels[index], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                              Text(
+                                                currentLabels[i],
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                             ],
                                           );
                                         }),
                                       );
-                                    }
-                                  )
-                                )
-                              ]
-                            )
-                          )
-                        )
-                      ]
-                    )
-                  )
-                )
-              ]
-            )
-          )
-        ]
-      )
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // --- YOUR EXACT ORIGINAL WIDGETS ---
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color iconColor) {
+  // cards
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 30),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 5),
-                Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-              ],
+        ],
+      ),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style:
+                    const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
             ),
           ),
         ],
@@ -244,25 +351,35 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   Widget _buildToggle(String label) {
     final active = selectedRange == label;
+
     return GestureDetector(
       onTap: () => setState(() => selectedRange = label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
           color: active ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : null,
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: active ? Colors.black : Colors.grey),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: active ? Colors.black : Colors.grey,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBar(double value, double maxValue, double maxHeight, bool isMonthly) {
-    final ratio     = maxValue > 0 ? value / maxValue : 0.0;
+  Widget _buildBar(
+      double value, double maxValue, double maxHeight, bool isMonthly) {
+    if (value <= 0) {
+      return SizedBox(width: isMonthly ? 20 : 30);
+    }
+
+    final ratio = maxValue > 0 ? value / maxValue : 0.0;
     final barHeight = (ratio * maxHeight).clamp(4.0, maxHeight);
 
     return AnimatedContainer(

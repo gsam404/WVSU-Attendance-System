@@ -649,7 +649,7 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);
       }
@@ -770,8 +770,8 @@ class _StudentErrorPageState extends State<StudentErrorPage> {
   @override
   void initState() {
     super.initState();
-    // TIMER: After 3 seconds, automatically return to the scanner page.
-    Future.delayed(const Duration(seconds: 3), () {
+    // TIMER: After 2 seconds, automatically return to the scanner page.
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);
       }

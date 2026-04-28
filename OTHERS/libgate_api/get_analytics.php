@@ -1,5 +1,4 @@
 <?php
-// Prevent PHP errors from breaking the JSON response
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -12,91 +11,113 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-include 'db_connect.php'; 
+include 'db_connect.php';
 
 if (!$conn) {
     echo json_encode(["error" => "Database connection failed: " . mysqli_connect_error()]);
     exit();
 }
 
-$weekly = array_fill(0, 7, 0); 
-$monthly = array_fill(0, 12, 0); 
-$peakDay = "None";
-$topDepartment = "None";
-$topCourse = "None";
+$weekly  = array_fill(0, 7, 0);   // Sun=0 … Sat=6
+$monthly = array_fill(0, 12, 0);  // Jan=0 … Dec=11
 
-// 1. Weekly Query
-$weekly_query = "SELECT DAYOFWEEK(Scan_Date) as day_num, COUNT(*) as count 
-                 FROM entry_logs 
-                 WHERE YEARWEEK(Scan_Date, 1) = YEARWEEK(CURDATE(), 1) 
-                 GROUP BY day_num";
-$weekly_result = mysqli_query($conn, $weekly_query);
-
-if ($weekly_result) {
-    while($row = mysqli_fetch_assoc($weekly_result)) {
-        $index = (int)$row['day_num'] - 1; 
-        $weekly[$index] = (int)$row['count'];
+// ── 1. Weekly chart — full Sun-to-Sat week containing today ─────────────────
+// YEARWEEK mode 0 = week starts Sunday, matches DAYOFWEEK (1=Sun…7=Sat)
+$weekly_query = "
+    SELECT DAYOFWEEK(Scan_Date) AS day_num, COUNT(*) AS cnt
+    FROM entry_logs
+    WHERE YEARWEEK(Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY DAYOFWEEK(Scan_Date)";
+$res = mysqli_query($conn, $weekly_query);
+if ($res) {
+    while ($row = mysqli_fetch_assoc($res)) {
+        $idx = (int)$row['day_num'] - 1;
+        if ($idx >= 0 && $idx < 7) $weekly[$idx] = (int)$row['cnt'];
     }
 }
 
-// 2. Monthly Query
-$monthly_query = "SELECT MONTH(Scan_Date) as month_num, COUNT(*) as count 
-                  FROM entry_logs 
-                  WHERE YEAR(Scan_Date) = YEAR(CURDATE()) 
-                  GROUP BY month_num";
-$monthly_result = mysqli_query($conn, $monthly_query);
-
-if ($monthly_result) {
-    while($row = mysqli_fetch_assoc($monthly_result)) {
-        $index = (int)$row['month_num'] - 1; 
-        $monthly[$index] = (int)$row['count'];
+// ── 2. Monthly chart — all months of current year ───────────────────────────
+$monthly_query = "
+    SELECT MONTH(Scan_Date) AS month_num, COUNT(*) AS cnt
+    FROM entry_logs
+    WHERE YEAR(Scan_Date) = YEAR(CURDATE())
+    GROUP BY MONTH(Scan_Date)";
+$res = mysqli_query($conn, $monthly_query);
+if ($res) {
+    while ($row = mysqli_fetch_assoc($res)) {
+        $idx = (int)$row['month_num'] - 1;
+        if ($idx >= 0 && $idx < 12) $monthly[$idx] = (int)$row['cnt'];
     }
 }
 
-// 3. Peak Day Query
-$peak_query = "SELECT DAYNAME(Scan_Date) as day_name, COUNT(*) as count 
-               FROM entry_logs 
-               WHERE YEARWEEK(Scan_Date, 1) = YEARWEEK(CURDATE(), 1) 
-               GROUP BY day_name 
-               ORDER BY count DESC LIMIT 1";
-$peak_result = mysqli_query($conn, $peak_query);
+// ── 3. Weekly stat cards ─────────────────────────────────────────────────────
+$weeklyPeakDay = $weeklyTopDepartment = $weeklyTopCourse = "None";
 
-if($peak_result && $row = mysqli_fetch_assoc($peak_result)) {
-    $peakDay = $row['day_name'];
-}
+$res = mysqli_query($conn, "
+    SELECT DAYNAME(Scan_Date) AS v, COUNT(*) AS cnt
+    FROM entry_logs
+    WHERE YEARWEEK(Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY DAYNAME(Scan_Date) ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $weeklyPeakDay = $row['v'];
 
-// 4. Top Department (USING REAL DEPARTMENTS)
-$top_dept_query = "SELECT d.code as Department, COUNT(l.Log_ID) as count 
-                   FROM entry_logs l 
-                   JOIN students s ON l.Student_Number = s.Student_Number 
-                   JOIN programs p ON s.Program = p.code
-                   JOIN departments d ON p.department_id = d.id
-                   GROUP BY d.id 
-                   ORDER BY count DESC LIMIT 1";
-$top_dept_result = mysqli_query($conn, $top_dept_query);
+$res = mysqli_query($conn, "
+    SELECT d.code AS v, COUNT(l.Log_ID) AS cnt
+    FROM entry_logs l
+    JOIN students s ON l.Student_Number = s.Student_Number
+    JOIN programs p ON s.Program = p.code
+    JOIN departments d ON p.department_id = d.id
+    WHERE YEARWEEK(l.Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY d.id ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $weeklyTopDepartment = $row['v'] ?? "None";
 
-if($top_dept_result && $row = mysqli_fetch_assoc($top_dept_result)) {
-    $topDepartment = $row['Department'] ?? "None";
-}
+$res = mysqli_query($conn, "
+    SELECT p.code AS v, COUNT(l.Log_ID) AS cnt
+    FROM entry_logs l
+    JOIN students s ON l.Student_Number = s.Student_Number
+    JOIN programs p ON s.Program = p.code
+    WHERE YEARWEEK(l.Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY p.id ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $weeklyTopCourse = $row['v'] ?? "None";
 
-// 5. Top Course
-$top_course_query = "SELECT p.code as Course, COUNT(l.Log_ID) as count 
-                     FROM entry_logs l 
-                     JOIN students s ON l.Student_Number = s.Student_Number 
-                     JOIN programs p ON s.Program = p.code
-                     GROUP BY p.id 
-                     ORDER BY count DESC LIMIT 1";
-$top_course_result = mysqli_query($conn, $top_course_query);
+// ── 4. Monthly stat cards ────────────────────────────────────────────────────
+$monthlyPeakMonth = $monthlyTopDepartment = $monthlyTopCourse = "None";
 
-if($top_course_result && $row = mysqli_fetch_assoc($top_course_result)) {
-    $topCourse = $row['Course'] ?? "None";
-}
+$res = mysqli_query($conn, "
+    SELECT MONTHNAME(Scan_Date) AS v, COUNT(*) AS cnt
+    FROM entry_logs
+    WHERE YEAR(Scan_Date) = YEAR(CURDATE())
+    GROUP BY MONTH(Scan_Date), MONTHNAME(Scan_Date)
+    ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $monthlyPeakMonth = $row['v'];
+
+$res = mysqli_query($conn, "
+    SELECT d.code AS v, COUNT(l.Log_ID) AS cnt
+    FROM entry_logs l
+    JOIN students s ON l.Student_Number = s.Student_Number
+    JOIN programs p ON s.Program = p.code
+    JOIN departments d ON p.department_id = d.id
+    WHERE YEAR(l.Scan_Date) = YEAR(CURDATE())
+    GROUP BY d.id ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $monthlyTopDepartment = $row['v'] ?? "None";
+
+$res = mysqli_query($conn, "
+    SELECT p.code AS v, COUNT(l.Log_ID) AS cnt
+    FROM entry_logs l
+    JOIN students s ON l.Student_Number = s.Student_Number
+    JOIN programs p ON s.Program = p.code
+    WHERE YEAR(l.Scan_Date) = YEAR(CURDATE())
+    GROUP BY p.id ORDER BY cnt DESC LIMIT 1");
+if ($res && $row = mysqli_fetch_assoc($res)) $monthlyTopCourse = $row['v'] ?? "None";
+
 
 echo json_encode([
-    "weekly" => $weekly,
-    "monthly" => $monthly,
-    "peakDay" => $peakDay,
-    "topDepartment" => $topDepartment,
-    "topCourse" => $topCourse
+    "weekly"               => $weekly,
+    "monthly"              => $monthly,
+    "weeklyPeakDay"        => $weeklyPeakDay,
+    "weeklyTopDepartment"  => $weeklyTopDepartment,
+    "weeklyTopCourse"      => $weeklyTopCourse,
+    "monthlyPeakMonth"     => $monthlyPeakMonth,
+    "monthlyTopDepartment" => $monthlyTopDepartment,
+    "monthlyTopCourse"     => $monthlyTopCourse,
 ]);
 ?>

@@ -11,7 +11,7 @@ date_default_timezone_set('Asia/Manila');
 
 include 'db_connect.php';
 
-// Catch the Type Error issue by defaulting to an empty string instead of null
+
 $scanned_id = $_POST['scanned_id'] ?? '';
 $scanned_id = strtoupper(trim($scanned_id));
 
