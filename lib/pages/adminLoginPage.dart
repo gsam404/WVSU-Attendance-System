@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:wvsu_attendance_system/pages/dashboardPage.dart'; // Adjust path as needed
+import 'package:wvsu_attendance_system/pages/dashboardPage.dart'; 
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -15,6 +15,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = "";
 
+  // 1. ADDED: State variable to track if password should be hidden
+  bool _obscurePassword = true;
+
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -25,9 +28,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     }
 
     try {
-    
+      
       final response = await http.post(
-        Uri.parse('http://localhost/libgate_api/admin_login.php'),
+        Uri.parse('http://192.168.1.55/libgate_api/admin_login.php'),
         body: {'email': email, 'password': password},
       );
 
@@ -104,17 +107,34 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       const SizedBox(height: 25),
                       const Text("Password"),
                       const SizedBox(height: 10),
+                      
+                      // 3. UPDATED: Password field with eye icon (Original Design Preserved)
                       TextField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword, 
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color(0xFFE3E7F3),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                       ),
+                      // -----------------------------------------------------
+
                       const SizedBox(height: 10),
                       if (_errorMessage.isNotEmpty)
                         Text(_errorMessage,
