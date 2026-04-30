@@ -15,7 +15,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = "";
 
-  // 1. ADDED: State variable to track if password should be hidden
+  
   bool _obscurePassword = true;
 
   Future<void> _login() async {
@@ -30,7 +30,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     try {
       
       final response = await http.post(
-        Uri.parse('http://192.168.1.55/libgate_api/admin_login.php'),
+        Uri.parse('http://localhost/libgate_api/admin_login.php'),
         body: {'email': email, 'password': password},
       );
 
