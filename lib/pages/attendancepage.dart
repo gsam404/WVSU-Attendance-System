@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
-import 'package:wvsu_attendance_system/pages/adminSession.dart'; // ← ADD
+import 'package:wvsu_attendance_system/pages/adminSession.dart'; // Admin ID check
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -24,7 +24,7 @@ class _AttendancePageState extends State<AttendancePage> {
   String? _selectedFilterCategory;
   String? _selectedFilterValue;
 
-  final List<String> _filterCategories = ['Program', 'Department', 'Month'];
+  final List<String> _filterCategories = ['School Year', 'Program', 'Department', 'Month'];
   final List<String> _months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
@@ -32,6 +32,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
   List<String> _programs = ['All Programs'];
   List<String> _departments = ['All Departments'];
+  
+  // The dynamic list that users can now manually add to!
+  final List<String> _schoolYears = [];
 
   List<Map<String, dynamic>> _attendanceData = [];
   String _searchQuery = '';
@@ -43,11 +46,12 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Timer? _pollTimer;
 
-  static const String _base = 'http://localhost/libgate_api';
+  static const String _base = 'http://192.168.1.55/libgate_api'; // IP for tablet
 
   @override
   void initState() {
     super.initState();
+    _generateInitialSchoolYears();
     _fetchAcademicFilters();
     _fetchAttendance();
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
@@ -67,7 +71,65 @@ class _AttendancePageState extends State<AttendancePage> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // ── FIX: pass admin_id ────────────────────────────────────────────────────
+  // ── GENERATE DEFAULT YEARS + "ADD CUSTOM YEAR" BUTTON ──────────────────────
+  void _generateInitialSchoolYears() {
+    int currentYear = DateTime.now().year;
+    int baseYear = 2023; 
+
+    if (mounted) {
+      setState(() {
+        _schoolYears.clear();
+        for (int y = currentYear + 1; y >= baseYear; y--) {
+          _schoolYears.add("$y-${y + 1}");
+        }
+        // This is the magic button that lets users manually type any year!
+        _schoolYears.add("+ Add Custom Year"); 
+      });
+    }
+  }
+
+  // ── MANUAL YEAR POPUP ──────────────────────────────────────────────────────
+  void _showAddYearDialog() {
+    final TextEditingController yearCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Manually Add School Year', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: TextField(
+          controller: yearCtrl,
+          decoration: InputDecoration(
+            hintText: 'e.g. 2030-2031',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            filled: true,
+            fillColor: Colors.grey.shade100,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+            onPressed: () {
+              final newYear = yearCtrl.text.trim();
+              if (newYear.isNotEmpty) {
+                setState(() {
+                  // Add their manual year to the very top of the list
+                  _schoolYears.insert(0, newYear);
+                  _selectedFilterValue = newYear; // Select it instantly
+                });
+                _fetchAttendance(); // Fetch data for their custom year
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Add & Apply', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _fetchAcademicFilters() async {
     try {
       final res = await http
@@ -90,13 +152,14 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (_) {}
   }
 
-  // ── FIX: pass admin_id ────────────────────────────────────────────────────
   Future<void> _fetchAttendance() async {
     final params = <String, String>{
-      'admin_id': AdminSession.id, // ← ADD
+      'admin_id': AdminSession.id, 
     };
 
-    if (_selectedFilterCategory == 'Month' && _selectedFilterValue != null) {
+    if (_selectedFilterCategory == 'School Year' && _selectedFilterValue != null) {
+      params['school_year'] = _selectedFilterValue!; 
+    } else if (_selectedFilterCategory == 'Month' && _selectedFilterValue != null) {
       params['month'] = (_months.indexOf(_selectedFilterValue!) + 1).toString();
     } else if (_selectedFilterCategory == 'Department' &&
         _selectedFilterValue != null &&
@@ -189,6 +252,9 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   String get _filterLabel {
+    if (_selectedFilterCategory == 'School Year' && _selectedFilterValue != null) {
+      return 'SY ' + _selectedFilterValue!; 
+    }
     if (_selectedFilterCategory == 'Month' && _selectedFilterValue != null) {
       return _selectedFilterValue!;
     }
@@ -574,8 +640,13 @@ class _AttendancePageState extends State<AttendancePage> {
             value: _selectedFilterValue,
             items: _getChoicesForCategory(_selectedFilterCategory!),
             onChanged: (val) {
-              setState(() => _selectedFilterValue = val);
-              if (val != null) _fetchAttendance();
+              // ── MAGIC HAPPENS HERE: If they pick "Add Custom Year", show the popup! ──
+              if (val == '+ Add Custom Year') {
+                _showAddYearDialog();
+              } else {
+                setState(() => _selectedFilterValue = val);
+                if (val != null) _fetchAttendance();
+              }
             },
           ),
         if (_selectedFilterCategory != null)
@@ -655,6 +726,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
   List<String> _getChoicesForCategory(String cat) {
     switch (cat) {
+      case 'School Year': return _schoolYears; 
       case 'Program': return _programs;
       case 'Department': return _departments;
       case 'Month': return _months;
