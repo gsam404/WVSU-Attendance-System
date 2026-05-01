@@ -13,13 +13,8 @@ $db   = "libgate_db";
 
 $conn = new mysqli($host, $user, $pass, $db);
 
-if ($conn->connect_error) {
-    echo json_encode(["success" => false, "message" => "Database connection failed"]);
-    exit;
-}
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email    = trim($_POST['email'] ?? '');
+    $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
 
     if (empty($email) || empty($password)) {
@@ -37,13 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if (password_verify($password, $row['password_hash'])) {
             echo json_encode([
-                "success"   => true,
-                "message"   => "Login successful",
-                "admin_id"  => $row['id'],       // <-- renamed to admin_id for clarity
-                "full_name" => $row['full_name'],
-                "email"     => $row['email'],
-                "role"      => $row['role'],
-                "campus"    => $row['campus']
+                "success"     => true,
+                "message"     => "Login successful",
+                "id"          => $row['id'],
+                "full_name"   => $row['full_name'],
+                "email"       => $row['email'],
+                "role"        => $row['role'],
+                "campus"      => $row['campus']
             ]);
         } else {
             echo json_encode(["success" => false, "message" => "Incorrect password"]);
@@ -51,10 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         echo json_encode(["success" => false, "message" => "Account not found"]);
     }
-
     $stmt->close();
-    $conn->close();
-} else {
-    echo json_encode(["success" => false, "message" => "Invalid request method"]);
 }
 ?>

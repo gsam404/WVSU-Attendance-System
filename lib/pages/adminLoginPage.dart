@@ -99,6 +99,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
+                          hintText: "example@wvsu.edu.ph",
                           filled: true,
                           fillColor: const Color(0xFFE3E7F3),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -111,6 +112,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
+                          hintText: "Enter password",
                           filled: true,
                           fillColor: const Color(0xFFE3E7F3),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
