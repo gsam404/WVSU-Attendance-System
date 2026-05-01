@@ -105,4 +105,26 @@ class ApiService {
       return null;
     }
   }
+
+  // --- 5. GET PROFILE (For the Sidebar user info) ---
+  Future<Map<String, dynamic>?> getProfile() async {
+    final String apiUrl = '$baseUrl/get_profile.php';
+
+    try {
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("Profile fetched: $data");
+        return data;
+      } else {
+        print("Server Error (Profile): ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      print("Connection Error (Profile): $e");
+      return null;
+    }
+  }
 }

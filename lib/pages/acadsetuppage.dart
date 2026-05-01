@@ -68,7 +68,9 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     final q = _searchQuery.toLowerCase();
     return _departments.where((d) {
       if (d.name.toLowerCase().contains(q) ||
-          d.code.toLowerCase().contains(q)) return true;
+          d.code.toLowerCase().contains(q)) {
+        return true;
+      }
       return d.courses
           .any((c) => c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
     }).toList();

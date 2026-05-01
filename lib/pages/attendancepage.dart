@@ -86,7 +86,9 @@ class _AttendancePageState extends State<AttendancePage> {
           final progs = ['All Programs'];
           for (var d in data['data']) {
             depts.add(d['code']);
-            for (var c in (d['courses'] ?? [])) progs.add(c['code']);
+            for (var c in (d['courses'] ?? [])) {
+              progs.add(c['code']);
+            }
           }
           if (mounted) setState(() { _departments = depts; _programs = progs; });
         }

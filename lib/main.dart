@@ -122,7 +122,7 @@ class AttendancePortal extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: Colors.white.withAlpha(242),
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -400,10 +400,9 @@ ________________________________________________________________________________
 // FEAT: Check if library is closed based on current time (6 PM to 7 AM)
 // commented out the actual time check for testing purposes, but this is where you would implement it. Adjust the hours as needed based on the library's actual operating hours.
 bool isLibraryClosed() {
-  final now = DateTime.now();
   // Returns true if it's 6 PM (18) or later, OR before 7 AM
   // Temporarily disabled for testing purposes. Uncomment the line below to enable time-based access control.
-  // return now.hour >= 18 || now.hour < 7;
+  // return DateTime.now().hour >= 18 || DateTime.now().hour < 7;
   // (not sure what is the exact time range for the library, adjust as needed)
   return false; // For testing purposes, always allow access
 }

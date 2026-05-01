@@ -1,76 +1,104 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import './adminSession.dart';
 
-// --- PROFILE POPUP WIDGET ---
+const String _apiUrl = "http://192.168.1.3/libgate_api/manage_admins.php";
+
 class ProfilePopUp extends StatelessWidget {
   final Widget child;
-  const ProfilePopUp({super.key, required this.child});
+
+  const ProfilePopUp({
+    super.key,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: PopupMenuButton<String>(
-        offset: const Offset(35, -270),
-        color: const Color.fromARGB(255, 255, 255, 255),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        constraints: const BoxConstraints(minHeight: 252),
-        onSelected: (value) {
-          if (value == 'add_admin') {
+    return PopupMenuButton<String>(
+      offset: const Offset(35, -270),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      constraints: const BoxConstraints(minHeight: 252),
+      onSelected: (value) {
+        if (value == 'add_admin') {
+          if (AdminSession.role == 'main_admin') {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const AdminManagementScreen()),
+              MaterialPageRoute(
+                  builder: (context) => const AdminManagementScreen()),
             );
-          } else if (value == 'logOut') {
-            // Log out logic here
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    "Access denied. Only the Main Admin can manage administrators."),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           }
-        },
-        child: child,
-        itemBuilder: (context) => [
-          PopupMenuItem<String>(
-            enabled: false,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Colors.grey,
-                      backgroundImage: AssetImage('assets/profile.png'),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Elra Di M. Madalogdog',
-                          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                color: Colors.black,
-                                fontSize: 14.0,
-                              ),
-                        ),
-                        Text(
-                          'University Librarian',
-                          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                fontWeight: FontWeight.w400,
-                                color: Colors.black,
-                                fontSize: 11.0,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
+        } else if (value == 'logOut') {
+          AdminSession.clear();
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                  radius: 24,
+                  backgroundColor: const Color(0xFF1B36C2),
+                  backgroundImage: AdminSession.profilePicUrl.isNotEmpty
+                      ? NetworkImage(AdminSession.profilePicUrl)
+                      : null,
+                  child: AdminSession.profilePicUrl.isEmpty
+                      ? Text(
+                          AdminSession.name.isNotEmpty
+                              ? AdminSession.name[0].toUpperCase()
+                              : "A",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
-              ],
-            ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AdminSession.name.isNotEmpty ? AdminSession.name : 'Admin',
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Colors.black,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  Text(
+                    AdminSession.email,
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black54,
+                          fontSize: 11.0,
+                        ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const PopupMenuItem(
-            enabled: false,
-            height: 1,
-            padding: EdgeInsets.symmetric(horizontal: 15),
-            child: Divider(color: Colors.grey),
-          ),
+        ),
+        const PopupMenuItem(
+          enabled: false,
+          height: 1,
+          padding: EdgeInsets.symmetric(horizontal: 15),
+          child: Divider(color: Colors.grey),
+        ),
+        if (AdminSession.role == 'main_admin')
           PopupMenuItem<String>(
             value: 'add_admin',
             child: Row(
@@ -88,30 +116,30 @@ class ProfilePopUp extends StatelessWidget {
               ],
             ),
           ),
-          PopupMenuItem<String>(
-            value: 'logOut',
-            child: Row(
-              children: [
-                Image.asset('assets/logOut.png', width: 24, height: 24),
-                const SizedBox(width: 12),
-                Text(
-                  'Log Out',
-                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        fontWeight: FontWeight.w300,
-                        color: Colors.red,
-                        fontSize: 20.0,
-                      ),
-                ),
-              ],
-            ),
+        PopupMenuItem<String>(
+          value: 'logOut',
+          child: Row(
+            children: [
+              Image.asset('assets/logOut.png', width: 24, height: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Log Out',
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      fontWeight: FontWeight.w300,
+                      color: Colors.red,
+                      fontSize: 20.0,
+                    ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
+      child: child,
     );
   }
 }
 
-// --- ADMIN MANAGEMENT SCREEN ---
+// ─── ADMIN MANAGEMENT SCREEN ─────────────────────────────────────────────────
 class AdminManagementScreen extends StatefulWidget {
   const AdminManagementScreen({super.key});
 
@@ -121,6 +149,7 @@ class AdminManagementScreen extends StatefulWidget {
 
 class _AdminManagementScreenState extends State<AdminManagementScreen> {
   final List<Map<String, String>> _admins = [];
+
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -130,6 +159,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   String? _campusError;
   String? _selectedCampus;
   String _searchQuery = "";
+  bool _isLoading = false;
 
   final List<Color> _avatarColors = [
     const Color(0xFF3B82F6),
@@ -149,15 +179,67 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     'Himamaylan - Campus'
   ];
 
-  void _addAdmin() {
+  @override
+  void initState() {
+    super.initState();
+    _fetchAdmins();
+  }
+
+  // --- API: FETCH ALL ---
+  Future<void> _fetchAdmins() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        body: {
+          'action': 'get_all',
+          'requester_role': AdminSession.role,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success') {
+          final List list = data['data'];
+          setState(() {
+            _admins.clear();
+            for (int i = 0; i < list.length; i++) {
+              final item = list[i];
+              _admins.add({
+                'id': item['id'].toString(),
+                'name': item['full_name'] ?? '',
+                'email': item['email'] ?? '',
+                'campus': item['campus'] ?? '',
+                'colorIndex': (i % _avatarColors.length).toString(),
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {
+      _showSnack("Network error: $e", isError: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- API: ADD ADMIN ---
+  Future<void> _addAdmin() async {
     setState(() {
       _emailError = null;
       _campusError = null;
     });
 
-    final email = _emailController.text.trim();
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
 
-    if (email.isNotEmpty && !email.endsWith('@wvsu.edu.ph')) {
+    if (firstName.isEmpty || email.isEmpty) {
+      _showSnack("First name and email are required.", isError: true);
+      return;
+    }
+
+    if (!email.endsWith('@wvsu.edu.ph')) {
       setState(() => _emailError = "Acceptable WVSU Email: @wvsu.edu.ph");
       return;
     }
@@ -167,128 +249,75 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
       return;
     }
 
-    bool alreadyHasLibrarian = _admins.any((admin) => admin['role'] == _selectedCampus);
-    if (alreadyHasLibrarian) {
-      setState(() => _campusError = "This campus already has an assigned librarian.");
-      return;
-    }
-
-    if (_firstNameController.text.isNotEmpty && email.isNotEmpty) {
-      setState(() {
-        int colorIdx = DateTime.now().millisecondsSinceEpoch % _avatarColors.length;
-        _admins.add({
-          'name': 'Dr. ${_firstNameController.text} ${_lastNameController.text}',
+    setState(() => _isLoading = true);
+    try {
+      final fullName = 'Dr. $firstName $lastName'.trim();
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        body: {
+          'action': 'add',
+          'requester_role': AdminSession.role,
+          'full_name': fullName,
           'email': email,
-          'role': _selectedCampus!,
-          'colorIndex': colorIdx.toString(),
-        });
-        
+          'campus': _selectedCampus!,
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (data['status'] == 'success') {
+        _fetchAdmins(); // Refresh to get server-side ID
         _firstNameController.clear();
         _lastNameController.clear();
         _emailController.clear();
-        _selectedCampus = null;
-      });
+        setState(() => _selectedCampus = null);
+        _showSnack("Administrator added successfully!");
+      } else {
+        _showSnack(data['message'] ?? 'Failed to add admin.', isError: true);
+      }
+    } catch (e) {
+      _showSnack("Network error: $e", isError: true);
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _showEditDialog(int index) {
-    final nameCtrl = TextEditingController(text: _admins[index]['name']);
-    final emailCtrl = TextEditingController(text: _admins[index]['email']);
-    String? editSelectedCampus = _admins[index]['role'];
-    
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder( // Necessary to show error messages inside the dialog
-          builder: (context, setDialogState) {
-            String? dialogEmailError;
-            String? dialogCampusError;
-
-            return AlertDialog(
-              title: const Text("Edit Administrator"),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameCtrl, 
-                      decoration: const InputDecoration(labelText: "Full Name")
-                    ),
-                    const SizedBox(height: 15),
-                    TextField(
-                      controller: emailCtrl, 
-                      decoration: InputDecoration(
-                        labelText: "Email Address",
-                        errorText: dialogEmailError,
-                      )
-                    ),
-                    const SizedBox(height: 15),
-                    DropdownButtonFormField<String>(
-                      initialValue: editSelectedCampus,
-                      items: _campuses.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setDialogState(() => editSelectedCampus = val),
-                      decoration: InputDecoration(
-                        labelText: "Assign Campus",
-                        errorText: dialogCampusError,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context), 
-                  child: const Text("Cancel")
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Check if new campus is already taken by someone ELSE
-                    bool isTaken = _admins.asMap().entries.any((entry) => 
-                      entry.key != index && entry.value['role'] == editSelectedCampus);
-                    
-                    if (!emailCtrl.text.endsWith('@wvsu.edu.ph')) {
-                      setDialogState(() => dialogEmailError = "Must be @wvsu.edu.ph");
-                    } else if (isTaken) {
-                      setDialogState(() => dialogCampusError = "Campus already assigned.");
-                    } else {
-                      setState(() {
-                        _admins[index]['name'] = nameCtrl.text;
-                        _admins[index]['email'] = emailCtrl.text;
-                        _admins[index]['role'] = editSelectedCampus!;
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Profile updated successfully!"), 
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text("Update"),
-                ),
-              ],
-            );
-          }
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(int index) {
+  // --- API: DELETE ADMIN ---
+  void _confirmDelete(String id, String name) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Confirm Deletion"),
-        content: Text("Are you sure you want to remove ${_admins[index]['name']}?"),
+        content: Text("Are you sure you want to remove $name?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
-            onPressed: () {
-              setState(() => _admins.removeAt(index));
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel")),
+          TextButton(
+            onPressed: () async {
               Navigator.pop(context);
+              setState(() => _isLoading = true);
+              try {
+                final response = await http.post(
+                  Uri.parse(_apiUrl),
+                  body: {
+                    'action': 'delete',
+                    'requester_role': AdminSession.role,
+                    'id': id,
+                  },
+                );
+
+                final data = json.decode(response.body);
+                if (data['status'] == 'success') {
+                  setState(() => _admins.removeWhere((a) => a['id'] == id));
+                  _showSnack("Administrator removed.");
+                } else {
+                  _showSnack(data['message'] ?? 'Delete failed.', isError: true);
+                }
+              } catch (e) {
+                _showSnack("Network error: $e", isError: true);
+              } finally {
+                setState(() => _isLoading = false);
+              }
             },
             child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
@@ -297,10 +326,122 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     );
   }
 
+  // --- UI DIALOG: EDIT ---
+  void _showEditDialog(int filteredIndex) {
+    final admin = _filteredAdmins[filteredIndex];
+    final actualIndex = _admins.indexWhere((a) => a['id'] == admin['id']);
+    if (actualIndex == -1) return;
+
+    final nameCtrl = TextEditingController(text: _admins[actualIndex]['name']);
+    final emailCtrl = TextEditingController(text: _admins[actualIndex]['email']);
+    String? editSelectedCampus = _admins[actualIndex]['campus'];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            bool dialogLoading = false;
+            String? dEmailErr;
+            String? dCampErr;
+
+            return AlertDialog(
+              title: const Text("Edit Administrator"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(labelText: "Full Name")),
+                    const SizedBox(height: 15),
+                    TextField(
+                        controller: emailCtrl,
+                        decoration: InputDecoration(
+                            labelText: "Email", errorText: dEmailErr)),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: editSelectedCampus,
+                      items: _campuses
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setInnerState(() => editSelectedCampus = val),
+                      decoration: InputDecoration(
+                          labelText: "Campus", errorText: dCampErr),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: dialogLoading
+                      ? () {}
+                      : () async {
+                          setInnerState(() => dialogLoading = true);
+                          try {
+                            final response = await http.post(
+                              Uri.parse(_apiUrl),
+                              body: {
+                                'action': 'update',
+                                'requester_role': AdminSession.role,
+                                'id': admin['id']!,
+                                'full_name': nameCtrl.text.trim(),
+                                'email': emailCtrl.text.trim(),
+                                'campus': editSelectedCampus!,
+                              },
+                            );
+                            final data = json.decode(response.body);
+                            if (data['status'] == 'success') {
+                              setState(() {
+                                _admins[actualIndex]['name'] = nameCtrl.text.trim();
+                                _admins[actualIndex]['email'] = emailCtrl.text.trim();
+                                _admins[actualIndex]['campus'] = editSelectedCampus!;
+                              });
+                              Navigator.pop(context);
+                              _showSnack("Updated successfully!");
+                            } else {
+                              _showSnack(data['message'], isError: true);
+                            }
+                          } catch (e) {
+                            _showSnack("Error: $e", isError: true);
+                          } finally {
+                            setInnerState(() => dialogLoading = false);
+                          }
+                        },
+                  child: const Text("Update"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  List<Map<String, String>> get _filteredAdmins => _admins
+      .where((admin) => admin['name']!
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase()))
+      .toList();
+
   @override
   Widget build(BuildContext context) {
-    final filteredAdmins = _admins.where((admin) =>
-        admin['name']!.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filteredAdmins = _filteredAdmins;
 
     return Scaffold(
       body: Container(
@@ -314,53 +455,86 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
         ),
         child: Column(
           children: [
+            // TOP BAR
             Container(
               width: double.infinity,
               color: const Color(0xFFD6D6D6),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 20),
               child: Row(
                 children: [
-                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-                  const Text("Administrator Management", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+                  IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.pop(context)),
+                  const Text("Administrator Management",
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333))),
+                  const Spacer(),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 16),
+                      child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
                 ],
               ),
             ),
+            // CONTENT
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(40.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Add new admins, manage existing roles, transfer system ownership.", style: TextStyle(color: Colors.white, fontSize: 20)),
+                    const Text(
+                        "Add new admins, manage existing roles, transfer system ownership.",
+                        style: TextStyle(color: Colors.white, fontSize: 20)),
                     const SizedBox(height: 25),
+                    
+                    // CARD: ADD ADMIN
                     _buildCard(
                       title: "Add New University Librarian",
                       child: Column(
                         children: [
                           Row(
                             children: [
-                              _buildTextField("First name", "e.g. Juan", _firstNameController),
+                              _buildTextField("First name", "e.g. Juan",
+                                  _firstNameController),
                               const SizedBox(width: 20),
-                              _buildTextField("Last name", "e.g. Dela Cruz", _lastNameController),
+                              _buildTextField("Last name", "e.g. Dela Cruz",
+                                  _lastNameController),
                             ],
                           ),
                           const SizedBox(height: 20),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildTextField("Email Address", "name@wvsu.edu.ph", _emailController, errorText: _emailError),
+                              _buildTextField("Email Address", "name@wvsu.edu.ph",
+                                  _emailController,
+                                  errorText: _emailError),
                               const SizedBox(width: 20),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("Role Assignment in", style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const Text("Role Assignment in",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 8),
                                     DropdownButtonFormField<String>(
-                                      initialValue: _selectedCampus,
-                                      decoration: _inputDecoration("e.g. Calinog Campus", errorText: _campusError),
-                                      items: _campuses.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                      onChanged: (val) => setState(() => _selectedCampus = val),
+                                      value: _selectedCampus,
+                                      decoration: _inputDecoration(
+                                          "e.g. Calinog Campus",
+                                          errorText: _campusError),
+                                      items: _campuses
+                                          .map((c) => DropdownMenuItem(
+                                              value: c, child: Text(c)))
+                                          .toList(),
+                                      onChanged: (val) => setState(
+                                          () => _selectedCampus = val),
                                     ),
                                   ],
                                 ),
@@ -371,28 +545,35 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: ElevatedButton(
-                              onPressed: _addAdmin,
+                              onPressed: _isLoading ? null : _addAdmin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1B36C2),
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 18),
                               ),
-                              child: const Text("Add Administrator", style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: const Text("Add Administrator",
+                                  style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 30),
+                    
+                    // CARD: ADMIN LIST
                     _buildCard(
                       title: "University Librarians List",
-                      subtitle: "View, edit, or remove administrative access for each university library.",
+                      subtitle: "View, edit, or remove administrative access.",
                       headerWidget: Container(
                         width: 220,
                         height: 38,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: const Color(0xFFCDE4F7), borderRadius: BorderRadius.circular(20)),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFCDE4F7),
+                            borderRadius: BorderRadius.circular(20)),
                         child: Row(
                           children: [
                             const Icon(Icons.search, size: 20, color: Colors.blueGrey),
@@ -400,9 +581,12 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
-                                onChanged: (val) => setState(() => _searchQuery = val),
-                                style: const TextStyle(fontSize: 13),
-                                decoration: const InputDecoration(hintText: "Search by name", border: InputBorder.none, isCollapsed: true),
+                                onChanged: (val) =>
+                                    setState(() => _searchQuery = val),
+                                decoration: const InputDecoration(
+                                    hintText: "Search by name",
+                                    border: InputBorder.none,
+                                    isCollapsed: true),
                               ),
                             ),
                           ],
@@ -413,65 +597,67 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           const SizedBox(height: 15),
                           const Row(
                             children: [
-                              Expanded(flex: 4, child: Text("User Profile", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 3, child: Text("Role Assigned in", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 2, child: Text("Actions", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13))),
+                              Expanded(flex: 4, child: Text("User Profile", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                              Expanded(flex: 3, child: Text("Campus Assigned", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                              Expanded(flex: 2, child: Text("Actions", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
                             ],
                           ),
                           const Divider(height: 25),
-                          filteredAdmins.isEmpty
-                              ? const Padding(padding: EdgeInsets.all(40), child: Text("No administrators found.", style: TextStyle(color: Colors.grey)))
-                              : ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: filteredAdmins.length,
-                                  separatorBuilder: (context, index) => const Divider(),
-                                  itemBuilder: (context, index) {
-                                    final admin = filteredAdmins[index];
-                                    final firstLetter = admin['email']!.isNotEmpty ? admin['email']![0].toUpperCase() : "?";
-                                    final colorIdx = int.parse(admin['colorIndex'] ?? "0");
-
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            flex: 4,
-                                            child: Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 20,
-                                                  backgroundColor: _avatarColors[colorIdx % _avatarColors.length],
-                                                  child: Text(firstLetter, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Flexible(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(admin['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                                      Text(admin['email']!, style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 12, decoration: TextDecoration.underline)),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
+                          if (filteredAdmins.isEmpty && !_isLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(40),
+                              child: Text("No administrators found.", style: TextStyle(color: Colors.grey)),
+                            )
+                          else
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: filteredAdmins.length,
+                              separatorBuilder: (context, index) => const Divider(),
+                              itemBuilder: (context, index) {
+                                final admin = filteredAdmins[index];
+                                final colorIdx = int.parse(admin['colorIndex'] ?? "0");
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 4,
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor: _avatarColors[colorIdx % _avatarColors.length],
+                                              child: Text(admin['name']![0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                             ),
-                                          ),
-                                          Expanded(flex: 3, child: Text(admin['role']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Row(
-                                              children: [
-                                                IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.grey), onPressed: () => _showEditDialog(index)),
-                                                IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => _confirmDelete(index)),
-                                              ],
+                                            const SizedBox(width: 12),
+                                            Flexible(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(admin['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                                  Text(admin['email']!, style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 12, decoration: TextDecoration.underline)),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    );
-                                  },
-                                ),
+                                      Expanded(flex: 3, child: Text(admin['campus']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Row(
+                                          children: [
+                                            IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.grey), onPressed: () => _showEditDialog(index)),
+                                            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _confirmDelete(admin['id']!, admin['name']!)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                         ],
                       ),
                     ),
@@ -485,17 +671,29 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     );
   }
 
-  Widget _buildCard({required String title, String? subtitle, required Widget child, Widget? headerWidget}) {
+  // --- UI HELPERS ---
+  Widget _buildCard({required String title, required Widget child, String? subtitle, Widget? headerWidget}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), if (headerWidget != null) headerWidget]),
-          if (subtitle != null) ...[const SizedBox(height: 5), Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13))],
-          const SizedBox(height: 25),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  if (subtitle != null) Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                ],
+              ),
+              if (headerWidget != null) headerWidget,
+            ],
+          ),
+          const SizedBox(height: 20),
           child,
         ],
       ),
@@ -509,7 +707,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          TextField(controller: controller, decoration: _inputDecoration(hint, errorText: errorText)),
+          TextField(
+            controller: controller,
+            decoration: _inputDecoration(hint, errorText: errorText),
+          ),
         ],
       ),
     );
@@ -518,11 +719,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   InputDecoration _inputDecoration(String hint, {String? errorText}) {
     return InputDecoration(
       hintText: hint,
+      errorText: errorText,
       filled: true,
       fillColor: const Color(0xFFF3F4F6),
-      errorText: errorText,
-      errorStyle: const TextStyle(color: Colors.red, fontSize: 11),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
