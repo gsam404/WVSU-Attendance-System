@@ -14,17 +14,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 include 'db_connect.php';
 
 try {
-
     // ===============================
     // GET FILTER PARAMETERS
     // ===============================
-    $date = $_GET['date'] ?? null;
-    $month = $_GET['month'] ?? null;
+    $admin_id   = intval($_GET['admin_id'] ?? 0);
+    $date       = $_GET['date']       ?? null;
+    $month      = $_GET['month']      ?? null;
     $department = $_GET['department'] ?? null;
-    $program = $_GET['program'] ?? null;
+    $program    = $_GET['program']    ?? null;
+
+    if ($admin_id <= 0) {
+        echo json_encode([["error" => "Missing admin_id."]]);
+        exit();
+    }
 
     // ===============================
-    // BASE QUERY
+    // BASE QUERY — scoped to admin
     // ===============================
     $query = "SELECT 
                 l.Scan_Date as date, 
@@ -39,7 +44,7 @@ try {
               JOIN students s ON l.Student_Number = s.Student_Number
               LEFT JOIN programs p ON s.Program = p.code
               LEFT JOIN departments d ON p.department_id = d.id
-              WHERE 1=1";
+              WHERE l.admin_id = $admin_id";
 
     // ===============================
     // APPLY FILTERS
@@ -71,10 +76,9 @@ try {
     $attendance_data = [];
 
     while ($row = $result->fetch_assoc()) {
-        $row['signOut'] = $row['signOut'] ?? '--:--';
-        $row['course'] = $row['course'] ?? 'N/A';
+        $row['signOut']    = $row['signOut']    ?? '--:--';
+        $row['course']     = $row['course']     ?? 'N/A';
         $row['department'] = $row['department'] ?? 'N/A';
-
         $attendance_data[] = $row;
     }
 
@@ -84,7 +88,5 @@ try {
     echo json_encode([["error" => $e->getMessage()]]);
 }
 
-if (isset($conn)) {
-    $conn->close();
-}
+if (isset($conn)) { $conn->close(); }
 ?>

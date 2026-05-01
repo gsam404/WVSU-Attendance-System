@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
+import 'package:wvsu_attendance_system/pages/adminSession.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -24,6 +25,8 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay = DateTime.now();
 
+  static const String _base = 'http://localhost/libgate_api';
+
   @override
   void initState() {
     super.initState();
@@ -31,75 +34,100 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _fetchStats() async {
+    final adminId = AdminSession.id;
+
+    // Guard: don't fetch if not logged in
+    if (adminId.isEmpty) {
+      debugPrint("Dashboard Error: AdminSession.id is empty — user not logged in?");
+      if (mounted) setState(() => isLoading = false);
+      return;
+    }
+
     try {
-      final response1 = await http.get(Uri.parse('http://localhost/libgate_api/get_dashboard_stats.php'));
-      final response2 = await http.get(Uri.parse('http://localhost/libgate_api/get_analytics.php'));
+      final response1 = await http.get(
+        Uri.parse('$_base/get_dashboard_stats.php?admin_id=$adminId'),
+      );
+      final response2 = await http.get(
+        Uri.parse('$_base/get_analytics.php?admin_id=$adminId'),
+      );
+
+      debugPrint("Stats response: ${response1.body}");
+      debugPrint("Analytics response: ${response2.body}");
 
       if (response1.statusCode == 200 && response2.statusCode == 200) {
         final data1 = jsonDecode(response1.body);
         final data2 = jsonDecode(response2.body);
 
-        if (data1['status'] == 'success') {
-          final List<dynamic> pieData = data1['pie_stats'] ?? [];
-          final List<dynamic> rawWeekly = data2['weekly'] ?? [];
+        // Show the actual error from PHP if status != success
+        if (data1['status'] != 'success') {
+          debugPrint("Stats API error: ${data1['message']}");
+          if (mounted) setState(() => isLoading = false);
+          return;
+        }
 
-          final List<Color> colors = [
-            const Color(0xFF3B82F6), Colors.orange, Colors.green,
-            Colors.cyan, Colors.red, Colors.purple, Colors.amber,
-          ];
+        final List<dynamic> pieData = data1['pie_stats'] ?? [];
+        final List<dynamic> rawWeekly = data2['weekly'] ?? [];
 
-          List<PieChartSectionData> tempSections = [];
-          List<Map<String, dynamic>> tempLabels = [];
+        final List<Color> colors = [
+          const Color(0xFF3B82F6), Colors.orange, Colors.green,
+          Colors.cyan, Colors.red, Colors.purple, Colors.amber,
+        ];
 
-          double grandTotal = 0;
-          for (var item in pieData) {
-            grandTotal += double.tryParse(item['value'].toString()) ?? 0.0;
-          }
+        List<PieChartSectionData> tempSections = [];
+        List<Map<String, dynamic>> tempLabels = [];
 
-          for (int i = 0; i < pieData.length; i++) {
-            double val = double.tryParse(pieData[i]['value'].toString()) ?? 0.0;
-            if (val > 0) {
-              double pct = grandTotal > 0 ? (val / grandTotal * 100) : 0;
-              tempSections.add(PieChartSectionData(
-                color: colors[i % colors.length],
-                value: val,
-                radius: 35, // FIX: increased from 20 to fill the space
-                showTitle: false,
-              ));
-              tempLabels.add({
-                "label": pieData[i]['label'] ?? '',
-                "color": colors[i % colors.length],
-                "pct": pct.toStringAsFixed(1),
-              });
-            }
-          }
+        double grandTotal = pieData.fold(
+          0.0,
+          (sum, item) => sum + (double.tryParse(item['value'].toString()) ?? 0.0),
+        );
 
-          String highestDept = "None";
-          if (tempLabels.isNotEmpty) {
-            var sorted = List.from(tempLabels)
-              ..sort((a, b) => double.parse(b['pct']).compareTo(double.parse(a['pct'])));
-            highestDept = sorted.first['label'];
-          }
-
-          if (mounted) {
-            setState(() {
-              totalVisits = data1['total_visits'].toString();
-              topDept = highestDept;
-              pieSections = tempSections;
-              pieLabels = tempLabels;
-
-              weeklyData = List<int>.generate(
-                7,
-                (i) => i < rawWeekly.length ? (rawWeekly[i] as num).toInt() : 0,
-              );
-
-              isLoading = false;
+        for (int i = 0; i < pieData.length; i++) {
+          double val = double.tryParse(pieData[i]['value'].toString()) ?? 0.0;
+          if (val > 0) {
+            double pct = grandTotal > 0 ? (val / grandTotal * 100) : 0;
+            tempSections.add(PieChartSectionData(
+              color: colors[i % colors.length],
+              value: val,
+              radius: 35,
+              showTitle: false,
+            ));
+            tempLabels.add({
+              "label": pieData[i]['label'] ?? '',
+              "color": colors[i % colors.length],
+              "pct": pct.toStringAsFixed(1),
             });
           }
         }
+
+        String highestDept = "None";
+        if (tempLabels.isNotEmpty) {
+          var sorted = List.from(tempLabels)
+            ..sort((a, b) =>
+                double.parse(b['pct']).compareTo(double.parse(a['pct'])));
+          highestDept = sorted.first['label'];
+        }
+
+        if (mounted) {
+          setState(() {
+            totalVisits = data1['total_visits'].toString();
+            topDept = highestDept;
+            pieSections = tempSections;
+            pieLabels = tempLabels;
+            weeklyData = List<int>.generate(
+              7,
+              (i) => i < rawWeekly.length
+                  ? (rawWeekly[i] as num).toInt()
+                  : 0,
+            );
+            isLoading = false;
+          });
+        }
+      } else {
+        debugPrint("HTTP error: ${response1.statusCode} / ${response2.statusCode}");
+        if (mounted) setState(() => isLoading = false);
       }
     } catch (e) {
-      debugPrint("Dashboard Error: $e");
+      debugPrint("Dashboard Exception: $e");
       if (mounted) setState(() => isLoading = false);
     }
   }
@@ -251,7 +279,6 @@ class _DashboardPageState extends State<DashboardPage> {
             Expanded(
               child: Row(
                 children: [
-                  // FIX: centered pie chart with no hole (centerSpaceRadius: 0)
                   SizedBox(
                     width: 70,
                     height: 70,
@@ -261,7 +288,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             child: PieChart(
                               PieChartData(
                                 sectionsSpace: 2,
-                                centerSpaceRadius: 0, // FIX: removed hole
+                                centerSpaceRadius: 0,
                                 sections: pieSections.isEmpty
                                     ? [
                                         PieChartSectionData(
@@ -381,10 +408,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            interval: 1, // FIX: force one label per integer step
+                            interval: 1,
                             reservedSize: 28,
                             getTitlesWidget: (value, meta) {
-                              // FIX: skip non-integer values to prevent duplicate labels
                               if (value != value.roundToDouble()) {
                                 return const SizedBox();
                               }
@@ -395,9 +421,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   child: Text(
                                     labels[index],
                                     style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
+                                        fontSize: 11, color: Colors.grey),
                                   ),
                                 );
                               }
@@ -406,14 +430,11 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
+                            sideTitles: SideTitles(showTitles: false)),
                         topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
+                            sideTitles: SideTitles(showTitles: false)),
                         rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
+                            sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
                       minX: 0,
@@ -467,7 +488,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: const Icon(Icons.chevron_left, color: Colors.black87),
                   onPressed: () {
                     setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
+                      _focusedDay = DateTime(
+                          _focusedDay.year, _focusedDay.month - 1);
                     });
                   },
                 ),
@@ -475,14 +497,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   onTap: () => _selectYearAndMonth(context),
                   child: Text(
                     DateFormat('MMMM yyyy').format(_focusedDay),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right, color: Colors.black87),
                   onPressed: () {
                     setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
+                      _focusedDay = DateTime(
+                          _focusedDay.year, _focusedDay.month + 1);
                     });
                   },
                 ),
@@ -519,7 +543,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 defaultTextStyle: TextStyle(fontSize: 12),
               ),
               daysOfWeekStyle: const DaysOfWeekStyle(
-                weekdayStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                weekdayStyle:
+                    TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                 weekendStyle: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,

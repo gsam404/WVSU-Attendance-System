@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import './sidebar.dart';
+import 'package:wvsu_attendance_system/pages/adminSession.dart'; // ← FIX: import session
 
 class ImportPage extends StatefulWidget {
   const ImportPage({super.key});
@@ -118,7 +119,7 @@ class _ImportPageState extends State<ImportPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // UPLOAD  →  sends a CSV file regardless of what the user picked
+  // UPLOAD  →  sends a CSV file + admin_id to the server
   // ---------------------------------------------------------------------------
 
   Future<void> _uploadToDatabase() async {
@@ -127,9 +128,11 @@ class _ImportPageState extends State<ImportPage> {
     setState(() => isUploading = true);
 
     try {
-      // Use 'http://10.0.2.2/api/upload.php' for Android Emulator
       final uri = Uri.parse('http://localhost/libgate_api/upload.php');
       final request = http.MultipartRequest('POST', uri);
+
+      // ── FIX: attach the logged-in admin's ID so PHP knows whose data this is ──
+      request.fields['admin_id'] = AdminSession.id;
 
       // Always send with a .csv extension so PHP accepts it
       final uploadName = selectedFileName!.replaceAll(RegExp(r'\.(xlsx|xls)$', caseSensitive: false), '.csv');
@@ -217,11 +220,12 @@ class _ImportPageState extends State<ImportPage> {
   }
 
   Widget _buildHeader() => Container(
-        width: double.infinity,
-        color: const Color(0xFFD6D6D6),
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
-        child: const Text("Import",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+        color: Colors.white,
+        child: const Row(children: [
+          Text("Import",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        ]),
       );
 
   Widget _buildDropZone() => Container(

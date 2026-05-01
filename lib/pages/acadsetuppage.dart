@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
+import 'package:wvsu_attendance_system/pages/adminSession.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
 
 class CourseModel {
-  int? id; // Added Database ID
+  int? id;
   String name;
   String code;
   CourseModel({this.id, required this.name, required this.code});
 }
 
 class DepartmentModel {
-  int? id; // Added Database ID
+  int? id;
   String name;
   String code;
   bool isExpanded;
@@ -48,10 +49,10 @@ class AcadSetupPage extends StatefulWidget {
 
 class _AcadSetupPageState extends State<AcadSetupPage> {
   final List<DepartmentModel> _departments = [];
-  
+
   // IMPORTANT: Change this to your computer's IP address if testing on a real phone!
   final String apiUrl = 'http://localhost/libgate_api/academic_api.php';
-  
+
   bool _isLoading = true;
 
   final _deptNameCtrl = TextEditingController();
@@ -59,6 +60,9 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   final _searchCtrl = TextEditingController();
 
   String _searchQuery = '';
+
+  // Convenience getter so every call picks up the current session ID
+  String get _adminId => AdminSession.id;
 
   int get _totalCourses =>
       _departments.fold(0, (sum, d) => sum + d.courses.length);
@@ -71,23 +75,25 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           d.code.toLowerCase().contains(q)) {
         return true;
       }
-      return d.courses
-          .any((c) => c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
+      return d.courses.any(
+          (c) => c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
     }).toList();
   }
 
   @override
   void initState() {
     super.initState();
-    _fetchData(); // Load data from DB when screen opens
+    _fetchData();
   }
 
-  // --- API CALLS ---
+  // ─── API CALLS ──────────────────────────────────────────────────────────────
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
-      final response = await http.get(Uri.parse('$apiUrl?action=fetch'));
+      final response = await http.get(
+        Uri.parse('$apiUrl?action=fetch&admin_id=$_adminId'),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == 'success') {
@@ -97,9 +103,10 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
             if (d['courses'] != null) {
               for (var c in d['courses']) {
                 coursesList.add(CourseModel(
-                    id: int.parse(c['id'].toString()),
-                    name: c['name'],
-                    code: c['code']));
+                  id: int.parse(c['id'].toString()),
+                  name: c['name'],
+                  code: c['code'],
+                ));
               }
             }
             _departments.add(DepartmentModel(
@@ -127,10 +134,11 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
       final response = await http.post(Uri.parse(apiUrl), body: {
         'action': 'add_dept',
         'name': name,
-        'code': code
+        'code': code,
+        'admin_id': _adminId,
       });
       final data = jsonDecode(response.body);
-      
+
       if (data['status'] == 'success') {
         setState(() {
           _departments.add(DepartmentModel(id: data['id'], name: name, code: code));
@@ -151,7 +159,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     try {
       final response = await http.post(Uri.parse(apiUrl), body: {
         'action': 'delete_dept',
-        'id': dept.id.toString()
+        'id': dept.id.toString(),
+        'admin_id': _adminId,
       });
       final data = jsonDecode(response.body);
       if (data['status'] == 'success') {
@@ -174,10 +183,11 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
         'action': 'add_course',
         'department_id': dept.id.toString(),
         'name': name,
-        'code': code
+        'code': code,
+        'admin_id': _adminId,
       });
       final data = jsonDecode(response.body);
-      
+
       if (data['status'] == 'success') {
         setState(() {
           dept.courses.add(CourseModel(id: data['id'], name: name, code: code));
@@ -196,7 +206,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     try {
       final response = await http.post(Uri.parse(apiUrl), body: {
         'action': 'delete_course',
-        'id': course.id.toString()
+        'id': course.id.toString(),
+        'admin_id': _adminId,
       });
       final data = jsonDecode(response.body);
       if (data['status'] == 'success') {
@@ -237,13 +248,13 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
             onPressed: () async {
-              // Save edits to database
               try {
-                 final response = await http.post(Uri.parse(apiUrl), body: {
+                final response = await http.post(Uri.parse(apiUrl), body: {
                   'action': 'edit_dept',
                   'id': dept.id.toString(),
                   'name': nameCtrl.text.trim(),
-                  'code': codeCtrl.text.trim()
+                  'code': codeCtrl.text.trim(),
+                  'admin_id': _adminId,
                 });
                 final data = jsonDecode(response.body);
                 if (data['status'] == 'success') {
@@ -254,7 +265,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
                   _showSnack('Department updated.');
                 }
               } catch (e) {
-                 _showSnack('Failed to update.');
+                _showSnack('Failed to update.');
               }
               Navigator.pop(context);
             },
@@ -313,53 +324,54 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
 
                 // BODY
                 Expanded(
-                  child: _isLoading 
-                    ? const Center(child: CircularProgressIndicator()) 
-                    : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── LEFT: Department Directory ──────────────────
-                        Expanded(
-                          flex: 3,
-                          child: _DepartmentDirectory(
-                            departments: _filtered,
-                            totalDepts: _departments.length,
-                            totalCourses: _totalCourses,
-                            searchCtrl: _searchCtrl,
-                            onSearch: (v) => setState(() => _searchQuery = v),
-                            onDelete: _deleteDepartment,
-                            onEdit: _editDepartment,
-                            onAddCourse: _addCourse,
-                            onDeleteCourse: _deleteCourse,
-                            onToggle: (dept) => setState(
-                                () => dept.isExpanded = !dept.isExpanded),
-                          ),
-                        ),
-
-                        const SizedBox(width: 20),
-
-                        // ── RIGHT: Info + Create Form ───────────────────
-                        SizedBox(
-                          width: 260,
-                          child: Column(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(24),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _HowItWorksCard(),
-                              const SizedBox(height: 16),
-                              _CreateDepartmentCard(
-                                nameCtrl: _deptNameCtrl,
-                                codeCtrl: _deptCodeCtrl,
-                                onSave: _saveDepartment,
+                              // ── LEFT: Department Directory ──────────────────
+                              Expanded(
+                                flex: 3,
+                                child: _DepartmentDirectory(
+                                  departments: _filtered,
+                                  totalDepts: _departments.length,
+                                  totalCourses: _totalCourses,
+                                  searchCtrl: _searchCtrl,
+                                  onSearch: (v) =>
+                                      setState(() => _searchQuery = v),
+                                  onDelete: _deleteDepartment,
+                                  onEdit: _editDepartment,
+                                  onAddCourse: _addCourse,
+                                  onDeleteCourse: _deleteCourse,
+                                  onToggle: (dept) => setState(
+                                      () => dept.isExpanded = !dept.isExpanded),
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              _AddingCourseCard(),
+
+                              const SizedBox(width: 20),
+
+                              // ── RIGHT: Info + Create Form ───────────────────
+                              SizedBox(
+                                width: 260,
+                                child: Column(
+                                  children: [
+                                    _HowItWorksCard(),
+                                    const SizedBox(height: 16),
+                                    _CreateDepartmentCard(
+                                      nameCtrl: _deptNameCtrl,
+                                      codeCtrl: _deptCodeCtrl,
+                                      onSave: _saveDepartment,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _AddingCourseCard(),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -543,14 +555,13 @@ class _DepartmentTile extends StatelessWidget {
             onTap: () => onToggle(dept),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   // Code badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1565C0),
                       borderRadius: BorderRadius.circular(4),
@@ -586,14 +597,12 @@ class _DepartmentTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Edit
                   _IconBtn(
                     icon: Icons.edit_outlined,
                     color: const Color(0xFF1565C0),
                     onTap: () => onEdit(dept),
                   ),
                   const SizedBox(width: 4),
-                  // Delete
                   _IconBtn(
                     icon: Icons.delete_outline,
                     color: Colors.red,
@@ -697,8 +706,11 @@ class _CourseTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
         children: [
-          Container(width: 4, height: 4, decoration: const BoxDecoration(
-            color: Color(0xFF1565C0), shape: BoxShape.circle)),
+          Container(
+              width: 4,
+              height: 4,
+              decoration: const BoxDecoration(
+                  color: Color(0xFF1565C0), shape: BoxShape.circle)),
           const SizedBox(width: 10),
           SizedBox(
             width: 60,
@@ -797,7 +809,8 @@ class _HowStep extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+              style:
+                  const TextStyle(fontSize: 12, color: Color(0xFF374151))),
         ),
       ],
     );
@@ -906,7 +919,8 @@ class _AddingCourseCard extends StatelessWidget {
           const SizedBox(height: 10),
           _InfoStep(
               icon: Icons.check_circle_outline,
-              text: 'Click Add Course to save it under the selected department.'),
+              text:
+                  'Click Add Course to save it under the selected department.'),
         ],
       ),
     );
@@ -928,7 +942,8 @@ class _InfoStep extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+              style:
+                  const TextStyle(fontSize: 12, color: Color(0xFF374151))),
         ),
       ],
     );
@@ -954,12 +969,13 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-          color: color, borderRadius: BorderRadius.circular(8)),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
       child: Column(
         children: [
           Text(label,
-              style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.8))),
+              style:
+                  TextStyle(fontSize: 12, color: textColor.withOpacity(0.8))),
           const SizedBox(height: 2),
           Text('$value',
               style: TextStyle(
@@ -1054,8 +1070,7 @@ class _FormField extends StatelessWidget {
       style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            TextStyle(fontSize: 12, color: Colors.grey.shade400),
+        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(

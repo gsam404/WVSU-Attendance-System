@@ -2,10 +2,6 @@
 /**
  * LIBGATE_DB - STUDENT IMPORT BACKEND
  * Save as: C:/xampp/htdocs/libgate_api/upload.php
- *
- * students table columns (run ALTER below first):
- * Student_Number, Last_Name, First_Name, Middle_Name, Program,
- * Year_Level, Section, Date_of_Birth, Place_of_Birth, Gender, Email_Address
  */
 
 header("Access-Control-Allow-Origin: *");
@@ -23,6 +19,14 @@ if ($conn->connect_error) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
+
+    // ── FIX: get the admin_id sent from Flutter ──────────────────────────────
+    $admin_id = intval($_POST['admin_id'] ?? 0);
+    if ($admin_id <= 0) {
+        echo json_encode(["status" => "error", "message" => "Missing admin_id. Please log in again."]);
+        exit;
+    }
+
     $fileTmpPath = $_FILES['file']['tmp_name'];
     $fileName    = $_FILES['file']['name'];
     $fileExt     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
@@ -75,14 +79,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
         return isset($row[$idx]) ? trim($row[$idx]) : null;
     };
 
-    // Wipe old data and insert new
-    $conn->query("TRUNCATE TABLE students");
+    // ── FIX: Delete only THIS admin's students instead of truncating everyone's ──
+    $del_stmt = $conn->prepare("DELETE FROM students WHERE admin_id = ?");
+    $del_stmt->bind_param("i", $admin_id);
+    $del_stmt->execute();
+    $del_stmt->close();
 
+    // ── FIX: Insert includes admin_id ────────────────────────────────────────
     $stmt = $conn->prepare("
         INSERT INTO students 
-            (Student_Number, Last_Name, First_Name, Middle_Name, Program,
+            (Student_Number, admin_id, Last_Name, First_Name, Middle_Name, Program,
              Year_Level, Section, Date_of_Birth, Place_of_Birth, Gender, Email_Address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $count  = 0;
@@ -108,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
             if (empty($snum)) { $errors++; continue; }
 
             $stmt->bind_param(
-                "sssssssssss",
-                $snum, $lname, $fname, $mname, $prog,
+                "sissssssssss",
+                $snum, $admin_id, $lname, $fname, $mname, $prog,
                 $yr, $sec, $dob, $pob, $gen, $email
             );
             $stmt->execute();

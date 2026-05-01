@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
+import 'package:wvsu_attendance_system/pages/adminSession.dart'; // ← ADD
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -19,8 +20,6 @@ class AttendancePage extends StatefulWidget {
 }
 
 class _AttendancePageState extends State<AttendancePage> {
-  // ─── Filter state 
-  // Default = today (real-time clock)
   DateTime _selectedDate = DateTime.now();
   String? _selectedFilterCategory;
   String? _selectedFilterValue;
@@ -34,28 +33,23 @@ class _AttendancePageState extends State<AttendancePage> {
   List<String> _programs = ['All Programs'];
   List<String> _departments = ['All Departments'];
 
-  // ─── Data state ────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _attendanceData = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   bool _isExporting = false;
 
-  // ─── Pagination: 30 rows per page, fully dynamic ───────────────────────────
   int _currentPage = 1;
   static const int _rowsPerPage = 30;
 
-  // ─── Auto-refresh timer ────────────────────────────────────────────────────
   Timer? _pollTimer;
 
   static const String _base = 'http://localhost/libgate_api';
 
-  // ═══════════════════════════════════════════════════════════════════════════
   @override
   void initState() {
     super.initState();
     _fetchAcademicFilters();
     _fetchAttendance();
-    // Refresh every 10 s only when on today + no category filter
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_selectedFilterCategory == null && _isSameDay(_selectedDate, DateTime.now())) {
         _fetchAttendance();
@@ -73,11 +67,11 @@ class _AttendancePageState extends State<AttendancePage> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // ─── Academic filters ──────────────────────────────────────────────────────
+  // ── FIX: pass admin_id ────────────────────────────────────────────────────
   Future<void> _fetchAcademicFilters() async {
     try {
       final res = await http
-          .get(Uri.parse('$_base/academic_api.php?action=fetch'))
+          .get(Uri.parse('$_base/academic_api.php?action=fetch&admin_id=${AdminSession.id}'))
           .timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -96,12 +90,13 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (_) {}
   }
 
-  // ─── Fetch from PHP with correct params ───────────────────────────────────
+  // ── FIX: pass admin_id ────────────────────────────────────────────────────
   Future<void> _fetchAttendance() async {
-    final params = <String, String>{};
+    final params = <String, String>{
+      'admin_id': AdminSession.id, // ← ADD
+    };
 
     if (_selectedFilterCategory == 'Month' && _selectedFilterValue != null) {
-      // Month filter → no date restriction, just month number
       params['month'] = (_months.indexOf(_selectedFilterValue!) + 1).toString();
     } else if (_selectedFilterCategory == 'Department' &&
         _selectedFilterValue != null &&
@@ -114,7 +109,6 @@ class _AttendancePageState extends State<AttendancePage> {
       params['program'] = _selectedFilterValue!;
       params['date'] = DateFormat('yyyy-MM-dd').format(_selectedDate);
     } else {
-      // Default: by selected date (today on first load)
       params['date'] = DateFormat('yyyy-MM-dd').format(_selectedDate);
     }
 
@@ -134,7 +128,6 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (_) {}
   }
 
-  // ─── Derived / computed ────────────────────────────────────────────────────
   List<Map<String, dynamic>> get _filteredData {
     if (_searchQuery.isEmpty) return _attendanceData;
     final q = _searchQuery.toLowerCase();
@@ -143,7 +136,6 @@ class _AttendancePageState extends State<AttendancePage> {
         (r['studentId'] ?? '').toLowerCase().contains(q)).toList();
   }
 
-  // Total pages based on actual record count — never hardcoded
   int get _totalPages =>
       (_filteredData.length / _rowsPerPage).ceil().clamp(1, 99999);
 
@@ -154,7 +146,6 @@ class _AttendancePageState extends State<AttendancePage> {
     return start >= all.length ? [] : all.sublist(start, end);
   }
 
-  // ─── Metrics (recalculated on every filtered dataset change) ──────────────
   Map<String, String> _calcMetrics(List<Map<String, dynamic>> data) {
     if (data.isEmpty) {
       return {'total': '0', 'dept': '—', 'course': '—', 'avg': '—', 'peak': '—'};
@@ -204,9 +195,6 @@ class _AttendancePageState extends State<AttendancePage> {
     return DateFormat('MMMM d, yyyy').format(_selectedDate);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // EXPORT — bottom sheet with CSV / PDF choice
-  // ═══════════════════════════════════════════════════════════════════════════
   void _showExportSheet() {
     showModalBottomSheet(
       context: context,
@@ -219,7 +207,6 @@ class _AttendancePageState extends State<AttendancePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
             Center(
               child: Container(
                 width: 40, height: 4,
@@ -230,18 +217,12 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Export Attendance',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-            ),
+            const Text('Export Attendance',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
             const SizedBox(height: 4),
-            Text(
-              'Filter: $_filterLabel  •  ${_filteredData.length} record(s)',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-            ),
+            Text('Filter: $_filterLabel  •  ${_filteredData.length} record(s)',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
             const SizedBox(height: 20),
-
-            // CSV
             _exportOption(
               icon: Icons.table_chart_rounded,
               iconColor: const Color(0xFF2E7D32),
@@ -251,8 +232,6 @@ class _AttendancePageState extends State<AttendancePage> {
               onTap: () { Navigator.pop(context); _exportCSV(); },
             ),
             const Divider(height: 16),
-
-            // PDF
             _exportOption(
               icon: Icons.picture_as_pdf_rounded,
               iconColor: const Color(0xFF1A4A8A),
@@ -305,7 +284,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // ─── CSV ──────────────────────────────────────────────────────────────────
   Future<void> _exportCSV() async {
     if (_isExporting) return;
     setState(() => _isExporting = true);
@@ -344,263 +322,152 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  // ─── PDF ──────────────────────────────────────────────────────────────────
   Future<void> _exportPDF() async {
-  if (_isExporting) return;
-  setState(() => _isExporting = true);
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
 
-  try {
-    final data = _filteredData;
-    final metrics = _calcMetrics(data);
-    final pdf = pw.Document();
+    try {
+      final data = _filteredData;
+      final metrics = _calcMetrics(data);
+      final pdf = pw.Document();
 
-    final fontBold = await PdfGoogleFonts.notoSansBold();
-    final fontRegular = await PdfGoogleFonts.notoSansRegular();
+      final fontBold = await PdfGoogleFonts.notoSansBold();
+      final fontRegular = await PdfGoogleFonts.notoSansRegular();
+      final logo = pw.MemoryImage(
+        (await rootBundle.load('assets/wvsu_logo.png')).buffer.asUint8List(),
+      );
 
-    //  LOGO
-    final logo = pw.MemoryImage(
-      (await rootBundle.load('assets/wvsu_logo.png'))
-          .buffer
-          .asUint8List(),
-    );
+      const wvsuBlue = PdfColor.fromInt(0xFF1A4A8A);
+      const wvsuGold = PdfColor.fromInt(0xFFFFC107);
+      const headerBg = PdfColor.fromInt(0xFFDDEAF8);
 
-    const wvsuBlue = PdfColor.fromInt(0xFF1A4A8A);
-    const wvsuGold = PdfColor.fromInt(0xFFFFC107);
-    const headerBg = PdfColor.fromInt(0xFFDDEAF8);
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageTheme: pw.PageTheme(
-          pageFormat: PdfPageFormat.a4,
-          margin:
-              const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-        ),
-
-        // ✅ NEW HEADER
-        header: (ctx) => pw.Column(
-          children: [
-            pw.Container(
-              width: double.infinity,
-              padding: const pw.EdgeInsets.symmetric(
-                  vertical: 12, horizontal: 16),
-              decoration: const pw.BoxDecoration(
-                color: wvsuBlue,
-                borderRadius:
-                    pw.BorderRadius.all(pw.Radius.circular(6)),
-              ),
-              child: pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  // LOGO
-                  pw.Container(
-                    width: 50,
-                    height: 50,
-                    child: pw.Image(logo),
-                  ),
-
-                  pw.SizedBox(width: 12),
-
-                  // CENTER TEXT
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment:
-                          pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Text(
-                          'West Visayas State University',
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            font: fontBold,
-                            fontSize: 14,
-                            color: PdfColors.white,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          'Luna St., La Paz, Iloilo City (Libgate)',
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            font: fontRegular,
-                            fontSize: 9,
-                            color: PdfColors.white,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          'LibGate Attendance Report',
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            font: fontRegular,
-                            fontSize: 9,
-                            color: wvsuGold,
-                          ),
-                        ),
-                      ],
+      pdf.addPage(
+        pw.MultiPage(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+          ),
+          header: (ctx) => pw.Column(
+            children: [
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: const pw.BoxDecoration(
+                  color: wvsuBlue,
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+                ),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Container(width: 50, height: 50, child: pw.Image(logo)),
+                    pw.SizedBox(width: 12),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text('West Visayas State University',
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.white)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('Luna St., La Paz, Iloilo City (Libgate)',
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.white)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('LibGate Attendance Report',
+                              textAlign: pw.TextAlign.center,
+                              style: pw.TextStyle(font: fontRegular, fontSize: 9, color: wvsuGold)),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Filter / Date: $_filterLabel',
+                      style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                  pw.Text(
+                      'Generated: ${DateFormat('MMM d, yyyy hh:mm a').format(DateTime.now())}',
+                      style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey600)),
                 ],
               ),
-            ),
-
-            pw.SizedBox(height: 8),
-
-            pw.Row(
-              mainAxisAlignment:
-                  pw.MainAxisAlignment.spaceBetween,
+              pw.Divider(color: wvsuBlue, thickness: 1),
+              pw.SizedBox(height: 4),
+            ],
+          ),
+          footer: (ctx) => pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}',
+                style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey600)),
+          ),
+          build: (ctx) => [
+            pw.Text('Summary',
+                style: pw.TextStyle(font: fontBold, fontSize: 12, color: wvsuBlue)),
+            pw.SizedBox(height: 6),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
               children: [
-                pw.Text(
-                  'Filter / Date: $_filterLabel',
-                  style:
-                      pw.TextStyle(font: fontBold, fontSize: 10),
-                ),
-                pw.Text(
-                  'Generated: ${DateFormat('MMM d, yyyy hh:mm a').format(DateTime.now())}',
-                  style: pw.TextStyle(
-                    font: fontRegular,
-                    fontSize: 9,
-                    color: PdfColors.grey600,
-                  ),
-                ),
+                _pdfMetricRow('Total Entries', metrics['total']!, fontBold, fontRegular, headerBg),
+                _pdfMetricRow('Most Visited Department', metrics['dept']!, fontBold, fontRegular, PdfColors.white),
+                _pdfMetricRow('Most Visited Course', metrics['course']!, fontBold, fontRegular, headerBg),
+                _pdfMetricRow('Avg Visits / Student', metrics['avg']!, fontBold, fontRegular, PdfColors.white),
+                _pdfMetricRow('Peak Traffic Hour', metrics['peak']!, fontBold, fontRegular, headerBg),
               ],
             ),
-
-            pw.Divider(color: wvsuBlue, thickness: 1),
-            pw.SizedBox(height: 4),
+            pw.SizedBox(height: 14),
+            pw.Text('Attendance Records',
+                style: pw.TextStyle(font: fontBold, fontSize: 12, color: wvsuBlue)),
+            pw.SizedBox(height: 6),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: wvsuBlue),
+                  children: ['Date', 'Sign In', 'Sign Out', 'Name', 'Student ID', 'Yr', 'Course', 'Dept']
+                      .map((h) => pw.Padding(
+                            padding: const pw.EdgeInsets.all(5),
+                            child: pw.Text(h,
+                                style: pw.TextStyle(font: fontBold, fontSize: 8, color: PdfColors.white)),
+                          ))
+                      .toList(),
+                ),
+                ...data.map((row) => pw.TableRow(
+                      children: [
+                        row['date'] ?? '', row['signIn'] ?? '', row['signOut'] ?? '--',
+                        row['name'] ?? '', row['studentId'] ?? '', row['year'] ?? '',
+                        row['course'] ?? '', row['department'] ?? '',
+                      ]
+                          .map((cell) => pw.Padding(
+                                padding: const pw.EdgeInsets.all(4),
+                                child: pw.Text(cell.toString(),
+                                    style: pw.TextStyle(font: fontRegular, fontSize: 7.5)),
+                              ))
+                          .toList(),
+                    )),
+              ],
+            ),
           ],
         ),
-
-        footer: (ctx) => pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: pw.Text(
-            'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
-            style: pw.TextStyle(
-                font: fontRegular,
-                fontSize: 9,
-                color: PdfColors.grey600),
-          ),
-        ),
-
-        build: (ctx) => [
-          pw.Text('Summary',
-              style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: 12,
-                  color: wvsuBlue)),
-          pw.SizedBox(height: 6),
-
-          pw.Table(
-            border: pw.TableBorder.all(
-                color: PdfColors.grey300, width: 0.5),
-            children: [
-              _pdfMetricRow('Total Entries',
-                  metrics['total']!, fontBold, fontRegular, headerBg),
-              _pdfMetricRow('Most Visited Department',
-                  metrics['dept']!, fontBold, fontRegular, PdfColors.white),
-              _pdfMetricRow('Most Visited Course',
-                  metrics['course']!, fontBold, fontRegular, headerBg),
-              _pdfMetricRow('Avg Visits / Student',
-                  metrics['avg']!, fontBold, fontRegular, PdfColors.white),
-              _pdfMetricRow('Peak Traffic Hour',
-                  metrics['peak']!, fontBold, fontRegular, headerBg),
-            ],
-          ),
-
-          pw.SizedBox(height: 14),
-
-          pw.Text('Attendance Records',
-              style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: 12,
-                  color: wvsuBlue)),
-
-          pw.SizedBox(height: 6),
-
-          pw.Table(
-            border: pw.TableBorder.all(
-                color: PdfColors.grey300, width: 0.5),
-            children: [
-              pw.TableRow(
-                decoration:
-                    const pw.BoxDecoration(color: wvsuBlue),
-                children: [
-                  'Date',
-                  'Sign In',
-                  'Sign Out',
-                  'Name',
-                  'Student ID',
-                  'Yr',
-                  'Course',
-                  'Dept'
-                ]
-                    .map(
-                      (h) => pw.Padding(
-                        padding:
-                            const pw.EdgeInsets.all(5),
-                        child: pw.Text(
-                          h,
-                          style: pw.TextStyle(
-                            font: fontBold,
-                            fontSize: 8,
-                            color: PdfColors.white,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-
-              ...data.map((row) => pw.TableRow(
-                    children: [
-                      row['date'] ?? '',
-                      row['signIn'] ?? '',
-                      row['signOut'] ?? '--',
-                      row['name'] ?? '',
-                      row['studentId'] ?? '',
-                      row['year'] ?? '',
-                      row['course'] ?? '',
-                      row['department'] ?? '',
-                    ]
-                        .map(
-                          (cell) => pw.Padding(
-                            padding:
-                                const pw.EdgeInsets.all(4),
-                            child: pw.Text(
-                              cell.toString(),
-                              style: pw.TextStyle(
-                                  font: fontRegular,
-                                  fontSize: 7.5),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  )),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (_) async => pdf.save(),
-      name:
-          'WVSU_Attendance_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-    );
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF export failed: $e'),
-          backgroundColor: Colors.red,
-        ),
       );
-    }
-  } finally {
-    if (mounted) setState(() => _isExporting = false);
-  }
-}
 
-  pw.TableRow _pdfMetricRow(
-      String label, String value, pw.Font bold, pw.Font regular, PdfColor bg) {
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdf.save(),
+        name: 'WVSU_Attendance_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  pw.TableRow _pdfMetricRow(String label, String value, pw.Font bold, pw.Font regular, PdfColor bg) {
     return pw.TableRow(
       decoration: pw.BoxDecoration(color: bg),
       children: [
@@ -614,9 +481,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredData;
@@ -634,30 +498,21 @@ class _AttendancePageState extends State<AttendancePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
                   Container(
                     width: double.infinity,
                     color: const Color(0xFFD6D6D6),
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
-                    child: const Text(
-                      'Attendance',
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                    ),
+                    child: const Text('Attendance',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(40, 14, 24, 6),
-                    child: Text(
-                      'Daily student entry logs – filtered by your selection',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                    ),
+                    child: Text('Daily student entry logs – filtered by your selection',
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
                   ),
-
-                  // Thin export progress bar
                   if (_isExporting)
                     const LinearProgressIndicator(
                         backgroundColor: Color(0xFFDDEAF8), color: Colors.blueAccent),
-
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -672,7 +527,6 @@ class _AttendancePageState extends State<AttendancePage> {
                           const SizedBox(height: 12),
                           _buildDataTable(paged),
                           const SizedBox(height: 16),
-                          // Pagination only renders when there's more than 1 page
                           if (_totalPages > 1) _buildPagination(),
                           const SizedBox(height: 40),
                         ],
@@ -688,14 +542,12 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // ─── Filter bar ───────────────────────────────────────────────────────────
   Widget _buildFilterBar() {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        // Date chip — always shows today by default
         InkWell(
           onTap: () => _pickDate(context),
           borderRadius: BorderRadius.circular(8),
@@ -707,22 +559,15 @@ class _AttendancePageState extends State<AttendancePage> {
             active: true,
           ),
         ),
-
-        // Category filter dropdown
         _buildDropdown(
           hint: 'Filter by…',
           value: _selectedFilterCategory,
           items: _filterCategories,
           onChanged: (val) {
-            setState(() {
-              _selectedFilterCategory = val;
-              _selectedFilterValue = null;
-            });
+            setState(() { _selectedFilterCategory = val; _selectedFilterValue = null; });
             if (val == null) _fetchAttendance();
           },
         ),
-
-        // Value dropdown
         if (_selectedFilterCategory != null)
           _buildDropdown(
             hint: 'Select $_selectedFilterCategory',
@@ -733,36 +578,24 @@ class _AttendancePageState extends State<AttendancePage> {
               if (val != null) _fetchAttendance();
             },
           ),
-
-        // Clear filter
         if (_selectedFilterCategory != null)
           TextButton.icon(
             onPressed: () {
-              setState(() {
-                _selectedFilterCategory = null;
-                _selectedFilterValue = null;
-              });
+              setState(() { _selectedFilterCategory = null; _selectedFilterValue = null; });
               _fetchAttendance();
             },
             icon: const Icon(Icons.close, size: 14, color: Colors.redAccent),
             label: const Text('Clear', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
           ),
-
         const Spacer(),
-
-        // Export button → bottom sheet
         ElevatedButton.icon(
           onPressed: _isExporting ? null : _showExportSheet,
           icon: _isExporting
-              ? const SizedBox(
-                  width: 14, height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
+              ? const SizedBox(width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.download, size: 16, color: Colors.white),
-          label: Text(
-            _isExporting ? 'Exporting…' : 'Export',
-            style: const TextStyle(color: Colors.white),
-          ),
+          label: Text(_isExporting ? 'Exporting…' : 'Export',
+              style: const TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1A4A8A),
             disabledBackgroundColor: Colors.grey.shade400,
@@ -813,9 +646,7 @@ class _AttendancePageState extends State<AttendancePage> {
           value: value,
           icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black54),
           style: const TextStyle(fontSize: 13, color: Colors.black87),
-          items: items
-              .map((item) => DropdownMenuItem<String>(value: item, child: Text(item)))
-              .toList(),
+          items: items.map((item) => DropdownMenuItem<String>(value: item, child: Text(item))).toList(),
           onChanged: onChanged,
         ),
       ),
@@ -840,10 +671,7 @@ class _AttendancePageState extends State<AttendancePage> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: Colors.blueAccent,
-            onPrimary: Colors.white,
-            onSurface: Colors.black87,
-          ),
+            primary: Colors.blueAccent, onPrimary: Colors.white, onSurface: Colors.black87),
         ),
         child: child!,
       ),
@@ -858,7 +686,6 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  // ─── Search bar + record count ─────────────────────────────────────────────
   Widget _buildSearchAndCount(int count) {
     return Row(
       children: [
@@ -866,8 +693,7 @@ class _AttendancePageState extends State<AttendancePage> {
             style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
         const Spacer(),
         SizedBox(
-          width: 280,
-          height: 42,
+          width: 280, height: 42,
           child: TextField(
             controller: _searchController,
             onChanged: (v) => setState(() { _searchQuery = v; _currentPage = 1; }),
@@ -880,8 +706,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       onPressed: () {
                         _searchController.clear();
                         setState(() { _searchQuery = ''; _currentPage = 1; });
-                      },
-                    )
+                      })
                   : const Icon(Icons.search, size: 18, color: Colors.blueAccent),
               filled: true,
               fillColor: Colors.white,
@@ -899,7 +724,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // ─── Metrics table ─────────────────────────────────────────────────────────
   Widget _buildMetricsTable(Map<String, String> m) {
     return Container(
       width: double.infinity,
@@ -917,10 +741,8 @@ class _AttendancePageState extends State<AttendancePage> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Metric',
-                    style: TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
-                Text('Value',
-                    style: TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text('Metric', style: TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text('Value', style: TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -943,14 +765,12 @@ class _AttendancePageState extends State<AttendancePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-          Text(value,
-              style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  // ─── Data table ────────────────────────────────────────────────────────────
   Widget _buildDataTable(List<Map<String, dynamic>> rows) {
     return Container(
       width: double.infinity,
@@ -1012,22 +832,16 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  // ─── Dynamic pagination ────────────────────────────────────────────────────
-  // Shows correct number of pages based on real record count.
-  // Uses ellipsis (…) for large page counts.
   Widget _buildPagination() {
     final total = _totalPages;
     final current = _currentPage;
-
-    // Build visible page numbers with ellipsis
     List<int?> pages = [];
     if (total <= 7) {
       pages = List.generate(total, (i) => i + 1);
     } else {
       pages.add(1);
       if (current > 3) pages.add(null);
-      for (int p = (current - 1).clamp(2, total - 1);
-          p <= (current + 1).clamp(2, total - 1); p++) {
+      for (int p = (current - 1).clamp(2, total - 1); p <= (current + 1).clamp(2, total - 1); p++) {
         pages.add(p);
       }
       if (current < total - 2) pages.add(null);
@@ -1039,10 +853,8 @@ class _AttendancePageState extends State<AttendancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _pageNavBtn(
-            icon: Icons.arrow_back_ios,
-            onTap: current > 1 ? () => setState(() => _currentPage--) : null,
-          ),
+          _pageNavBtn(icon: Icons.arrow_back_ios,
+              onTap: current > 1 ? () => setState(() => _currentPage--) : null),
           const SizedBox(width: 4),
           ...pages.map((p) {
             if (p == null) {
@@ -1059,34 +871,25 @@ class _AttendancePageState extends State<AttendancePage> {
                       width: 34, height: 34,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                          color: Colors.blueAccent,
-                          borderRadius: BorderRadius.circular(6)),
-                      child: Text('$p',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                    )
+                          color: Colors.blueAccent, borderRadius: BorderRadius.circular(6)),
+                      child: Text('$p', style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)))
                   : InkWell(
                       onTap: () => setState(() => _currentPage = p),
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
                         width: 34, height: 34,
                         alignment: Alignment.center,
-                        child: Text('$p',
-                            style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                      ),
-                    ),
+                        child: Text('$p', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                      )),
             );
           }),
           const SizedBox(width: 4),
-          _pageNavBtn(
-            icon: Icons.arrow_forward_ios,
-            onTap: current < total ? () => setState(() => _currentPage++) : null,
-          ),
+          _pageNavBtn(icon: Icons.arrow_forward_ios,
+              onTap: current < total ? () => setState(() => _currentPage++) : null),
           const SizedBox(width: 12),
-          Text(
-            'Page $current of $total  (${_filteredData.length} total entries)',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-          ),
+          Text('Page $current of $total  (${_filteredData.length} total entries)',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
         ],
       ),
     );
@@ -1104,8 +907,7 @@ class _AttendancePageState extends State<AttendancePage> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: Colors.grey.shade300),
         ),
-        child: Icon(icon,
-            size: 14,
+        child: Icon(icon, size: 14,
             color: onTap != null ? Colors.blueAccent : Colors.grey.shade300),
       ),
     );

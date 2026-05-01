@@ -42,15 +42,30 @@ class ApiService {
     return null;
   }
 
-  // --- 2. GET DASHBOARD STATS (For the Dashboard Cards & Pie Chart) ---
+  // --- 2. RAW POST helper ---
+  Future<Map<String, dynamic>?> rawPost(
+      String url, Map<String, String> body) async {
+    try {
+      final response = await http
+          .post(Uri.parse(url), body: body)
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print("Connection Error (rawPost): $e");
+    }
+    return null;
+  }
+
+  // --- 3. GET DASHBOARD STATS (For the Dashboard Cards & Pie Chart) ---
   Future<Map<String, dynamic>?> getDashboardStats() async {
     final String apiUrl = '$baseUrl/get_dashboard_stats.php';
 
     try {
       final response = await http
-          .get(
-            Uri.parse(apiUrl),
-          )
+          .get(Uri.parse(apiUrl))
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -67,13 +82,14 @@ class ApiService {
     }
   }
 
-  // --- 3. GET ATTENDANCE LOGS (For the Attendance Table) ---
+  // --- 4. GET ATTENDANCE LOGS (For the Attendance Table) ---
   Future<List<dynamic>> getAttendanceLogs() async {
     final String apiUrl = '$baseUrl/get_attendance.php';
 
     try {
-      final response =
-          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -84,13 +100,14 @@ class ApiService {
     return [];
   }
 
-  // --- 4. GET ANALYTICS (For the Analytics Page) ---
+  // --- 5. GET ANALYTICS (For the Analytics Page) ---
   Future<Map<String, dynamic>?> getAnalytics() async {
     final String apiUrl = '$baseUrl/get_analytics.php';
 
     try {
-      final response =
-          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -106,13 +123,14 @@ class ApiService {
     }
   }
 
-  // --- 5. GET PROFILE (For the Sidebar user info) ---
+  // --- 6. GET PROFILE (For the Sidebar user info) ---
   Future<Map<String, dynamic>?> getProfile() async {
     final String apiUrl = '$baseUrl/get_profile.php';
 
     try {
-      final response =
-          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

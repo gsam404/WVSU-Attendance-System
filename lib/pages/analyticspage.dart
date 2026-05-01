@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
-import 'package:wvsu_attendance_system/services/api_service.dart';
+import 'package:wvsu_attendance_system/pages/adminSession.dart'; // ← ADD
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -13,7 +13,7 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
-  final ApiService apiService = ApiService();
+  static const String _base = 'http://localhost/libgate_api';
 
   String weeklyPeakDay = "None";
   String weeklyTopDepartment = "None";
@@ -43,9 +43,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   Future<void> loadAnalytics() async {
+    // ── FIX: pass admin_id so analytics are scoped to this admin ─────────────
+    final adminId = AdminSession.id;
     try {
       final response = await http.get(
-        Uri.parse('http://localhost/libgate_api/get_analytics.php'),
+        Uri.parse('$_base/get_analytics.php?admin_id=$adminId'),
       );
 
       if (response.statusCode == 200) {
@@ -82,15 +84,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   String get peakLabel =>
       selectedRange == "Weekly" ? weeklyPeakDay : monthlyPeakMonth;
   String get topDepartment =>
-      selectedRange == "Weekly"
-          ? weeklyTopDepartment
-          : monthlyTopDepartment;
+      selectedRange == "Weekly" ? weeklyTopDepartment : monthlyTopDepartment;
   String get topCourse =>
       selectedRange == "Weekly" ? weeklyTopCourse : monthlyTopCourse;
   String get peakCardTitle =>
-      selectedRange == "Weekly"
-          ? "Peak traffic day"
-          : "Peak traffic month";
+      selectedRange == "Weekly" ? "Peak traffic day" : "Peak traffic month";
 
   @override
   Widget build(BuildContext context) {
@@ -115,12 +113,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           Expanded(
             child: Column(
               children: [
-                // HEADER
                 Container(
                   width: double.infinity,
                   color: const Color(0xFFD6D6D6),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 25),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
                   child: const Text(
                     "Analytics",
                     style: TextStyle(
@@ -130,14 +126,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                   ),
                 ),
-
-                // CONTENT
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(40),
                     child: Column(
                       children: [
-                        //  card
                         Row(
                           children: [
                             Expanded(
@@ -177,10 +170,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 30),
-
-                        // CHART
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(35),
@@ -189,16 +179,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           "Student Visits Overview",
@@ -223,30 +210,22 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                                   ],
                                 ),
                                 const SizedBox(height: 30),
-
                                 Expanded(
                                   child: LayoutBuilder(
                                     builder: (context, constraints) {
-                                      final maxHeight =
-                                          constraints.maxHeight - 30;
-
+                                      final maxHeight = constraints.maxHeight - 30;
                                       return Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: List.generate(
-                                            currentData.length, (i) {
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: List.generate(currentData.length, (i) {
                                           return Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
+                                            mainAxisAlignment: MainAxisAlignment.end,
                                             children: [
                                               _buildBar(
                                                 currentData[i].toDouble(),
                                                 maxValue.toDouble(),
                                                 maxHeight,
-                                                selectedRange ==
-                                                    "Monthly",
+                                                selectedRange == "Monthly",
                                               ),
                                               const SizedBox(height: 10),
                                               Text(
@@ -279,9 +258,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  // cards
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color iconColor) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color iconColor) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -301,11 +278,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                title,
-                style:
-                    const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
+              Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 10),
               Text(
                 value,
@@ -317,7 +290,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               ),
             ],
           ),
-
           Positioned(
             top: 0,
             right: 0,
@@ -351,12 +323,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   Widget _buildToggle(String label) {
     final active = selectedRange == label;
-
     return GestureDetector(
       onTap: () => setState(() => selectedRange = label),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
           color: active ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
@@ -373,12 +343,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _buildBar(
-      double value, double maxValue, double maxHeight, bool isMonthly) {
+  Widget _buildBar(double value, double maxValue, double maxHeight, bool isMonthly) {
     if (value <= 0) {
       return SizedBox(width: isMonthly ? 20 : 30);
     }
-
     final ratio = maxValue > 0 ? value / maxValue : 0.0;
     final barHeight = (ratio * maxHeight).clamp(4.0, maxHeight);
 
