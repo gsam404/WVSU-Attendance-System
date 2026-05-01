@@ -28,6 +28,9 @@ dependencies:
   csv: ^6.0.0
   pdf: ^3.10.8
   printing: ^5.12.0
+  
+  # Audio Playback for Scanner
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -49,6 +52,9 @@ flutter:
     - assets/useradd.png
     - assets/import.png
     - assets/acadsetup.png
+    # Scanner Audio Files
+    - assets/audio/inout.wav
+    - assets/audio/wrong.wav
 
   fonts:
     - family: Inter
