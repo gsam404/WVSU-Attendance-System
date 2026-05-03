@@ -46,7 +46,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Timer? _pollTimer;
 
-  static const String _base = 'http://192.168.1.55/libgate_api'; // IP for tablet
+  static const String _base = 'http://localhost/libgate_api/get_attendance.php'; // IP for tablet
 
   @override
   void initState() {
@@ -74,7 +74,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // ── GENERATE DEFAULT YEARS + "ADD CUSTOM YEAR" BUTTON ──────────────────────
   void _generateInitialSchoolYears() {
     int currentYear = DateTime.now().year;
-    int baseYear = 2023; 
+    int baseYear = 2025; 
 
     if (mounted) {
       setState(() {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'pages/adminLoginPage.dart';
-import 'dart:async';
-import 'package:audioplayers/audioplayers.dart'; // <--- ADDED: Audio package import
+import 'dart:async'; //
+import 'package:audioplayers/audioplayers.dart'; // ADDED: Audio package import
 
 void main() {
   runApp(const MyApp());
@@ -26,8 +26,8 @@ class MyApp extends StatelessWidget {
       // Set the initial page to the AttendancePortal (the choice screen)
       home: const AttendancePortal(),
     );
-  }
-} 
+  } // Widget build
+} // ------------------------------- End of MyApp
 
 /* ---------------------------------------------------------
       MAIN ATTENDANCE PORTAL PAGE (SELECTION SCREEN)
@@ -80,9 +80,9 @@ class AttendancePortal extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (context) => const StudentCheckInPage()),
-                        );
-                      },
-                    ),
+                        ); // Navigate to StudentCheckInPage when Student button is pressed
+                      }, // Student button that navigates to StudentCheckInPage (which is the scanner page)
+                    ), // Student card
                     const SizedBox(width: 50),
                     _buildPortalCard(
                       context: context,
@@ -95,18 +95,18 @@ class AttendancePortal extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (context) => const AdminLoginPage()),
-                        );
-                      },
-                    ),
-                  ],
+                        ); // Navigate to AdminLoginPage when Admin button is pressed
+                      }, // Admin button that navigates to AdminLoginPage (which is the admin login screen)
+                    ), // Admin card
+                  ], // Children of Row
                 ),
-              ],
+              ], //Children of Column
             ),
           ),
         ),
       ),
     );
-  }
+  } // Widget build ---------------------------------------
 
 /* ---------------------------------------------------------
    HELPER METHOD TO BUILD THE PORTAL CARDS (STUDENT AND ADMIN)
@@ -161,11 +161,11 @@ class AttendancePortal extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ], // Children of Column
       ),
     );
-  }
-}
+  } // Helper method to build the portal cards (Student and Admin)
+} //  End of AttendancePortal ------------------------------------------
 
 /* ---------------------------------------------------------
             Student Check-In Page (Scanner Page)
@@ -178,6 +178,7 @@ class StudentCheckInPage extends StatefulWidget {
 }
 
 class _StudentCheckInPageState extends State<StudentCheckInPage> {
+  // FocusNode and Controller to manage the "hidden" scanner input
   final FocusNode _barcodeFocusNode = FocusNode();
   final TextEditingController _barcodeController = TextEditingController();
   
@@ -187,6 +188,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   @override
   void initState() {
     super.initState();
+    // ADDED: Request focus automatically when page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _barcodeFocusNode.requestFocus();
     });
@@ -196,6 +198,8 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   Future<void> _handleBarcodeScan(String barcode) async {
     if (barcode.trim().isEmpty) return;
 
+// RECHECK: This is where we check if the library is closed before we even call the API. If it's closed, we show a message and stop execution here.
+    // --- TIME CHECK IN THE SCANNER ---
     if (isLibraryClosed()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -206,8 +210,8 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       );
       _barcodeController.clear();
       _barcodeFocusNode.requestFocus();
-      return; 
-    }
+      return; // Stops here and doesn't call the API if library is closed
+    } // ---------
 
     try {
       var studentData = await ApiService().scanStudentID(barcode.trim());
@@ -215,7 +219,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       if (studentData != null &&
           studentData['status'] == 'success' &&
           mounted) {
-            
+        
         // --- ADDED: PLAY SUCCESS SOUND ---
         await _audioPlayer.play(AssetSource('audio/inout.wav'));
 
@@ -226,12 +230,14 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
               studentId: studentData['student_id']?.toString() ?? "N/A",
               studentName: studentData['full_name']?.toString() ?? "Unknown",
               program: studentData['program']?.toString() ?? "N/A",
-              action: studentData['action']?.toString() ?? "In", 
-              message: studentData['message']?.toString() ?? "", 
+              action: studentData['action']?.toString() ?? "In", // Added
+              message: studentData['message']?.toString() ?? "", // Added
             ),
           ),
         );
       } else {
+        // --- CONDITION: NO STUDENT ID PRESENT IN DATABASE ---
+        // This happens when PHP returns "status": "error"
         if (mounted) {
           
           // --- ADDED: PLAY ERROR SOUND ---
@@ -248,9 +254,11 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
         }
       }
     } catch (e) {
+      // --- CONDITION: NOT CONNECTED TO DATABASE / WIFI ISSUES ---
+      // This happens if the server IP is wrong, MySQL is off, or Wifi is down
       if (mounted) {
         
-        // --- ADDED: PLAY ERROR SOUND FOR NETWORK ISSUES ---
+        // --- ADDED: PLAY ERROR SOUND FOR NETWORK ---
         await _audioPlayer.play(AssetSource('audio/wrong.wav'));
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -278,12 +286,14 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      // FEAT: If the user clicks anywhere, refocus the scanner
       onTap: () => _barcodeFocusNode.requestFocus(),
       child: Scaffold(
         body: Stack(
           children: [
+            // 6. ADDED: The "Invisible" Listener
             Positioned(
-              top: -50, 
+              top: -50, // Hide it off-screen
               child: SizedBox(
                 width: 1,
                 child: TextField(
@@ -291,10 +301,14 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                   controller: _barcodeController,
                   autofocus: true,
                   onSubmitted:
-                      _handleBarcodeScan, 
+                      _handleBarcodeScan, // Triggered by scanner's "Enter"
                 ),
               ),
             ),
+
+/* _________________________________________________________________________________________
+        Student Check-In UI (Visible to users, but scanner input is hidden and auto-focused)
+_____________________________________________________________________________________________*/
             Container(
               width: double.infinity,
               height: double.infinity,
@@ -329,6 +343,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
+                              // Main instruction text
                               "Scan Your ID Barcode to Enter",
                               style: TextStyle(
                                   fontSize: 36,
@@ -337,6 +352,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                             ),
                             const SizedBox(height: 30),
                             const Text(
+                              // Sub-instruction text
                               "Place your ID barcode under the scanner\nEnsure your card is active and not expired.",
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -346,6 +362,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                             ),
                             const SizedBox(height: 60),
                             const Text(
+                                // Manual input prompt
                                 "No ID? Please enter your details manually below.",
                                 style: TextStyle(
                                     fontSize: 13, color: Colors.black87)),
@@ -356,7 +373,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                                 MaterialPageRoute(
                                     builder: (context) =>
                                         const ManualInputPage()),
-                              ),
+                              ), // Navigate to ManualInputPage when button is pressed
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF438EE4),
                                 padding: const EdgeInsets.symmetric(
@@ -367,14 +384,14 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                                       color: Colors.black87, width: 1),
                                 ),
                                 elevation: 0,
-                              ),
+                              ), // Style: Button to navigate to Manual Input Page
                               child: const Text("Manual Input",
                                   style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600)),
                             ),
-                          ],
+                          ], // Children of the inner Column (the card content
                         ),
                       ),
                     ),
@@ -385,19 +402,26 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
                       label: const Text("Back to Portal",
                           style: TextStyle(color: Colors.white, fontSize: 16)),
                     ),
-                  ],
+                  ], // Children of the outer Column (the whole page content
                 ),
               ),
             ),
-          ],
+          ], // Children of the Stack (the invisible scanner input and the visible UI)
         ),
       ),
     );
-  }
-}
+  } // Widget build
+} // End of StudentCheckInPage ------------------------------------------
 
+// FEAT: Check if library is closed based on current time (6 PM to 7 AM)
+// commented out the actual time check for testing purposes, but this is where you would implement it. Adjust the hours as needed based on the library's actual operating hours.
 bool isLibraryClosed() {
-  return false; 
+  final now = DateTime.now();
+  // Returns true if it's 6 PM (18) or later, OR before 7 AM
+  // Temporarily disabled for testing purposes. Uncomment the line below to enable time-based access control.
+  // return DateTime.now().hour >= 18 || DateTime.now().hour < 7;
+  // (not sure what is the exact time range for the library, adjust as needed)
+  return false; // For testing purposes, always allow access
 }
 
 /* ---------------------------------------------------------
@@ -492,6 +516,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                   String enteredId = _idController.text.trim();
 
                                   if (enteredId.isNotEmpty) {
+                                    // --- TIME CHECK ADDED HERE ---
                                     if (isLibraryClosed()) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -501,11 +526,13 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                           backgroundColor: Colors.redAccent,
                                         ),
                                       );
-                                      return; 
+                                      return; // Stop execution so _isLoading never becomes true
                                     }
+                                    // -----------------------------
 
                                     setState(() => _isLoading = true);
 
+                                    // --- Manual Input Logic ---
                                     try {
                                       var studentData = await ApiService()
                                           .scanStudentID(enteredId);
@@ -515,7 +542,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
 
                                       if (studentData != null &&
                                           studentData['status'] == 'success') {
-                                            
+                                        
                                         // --- ADDED: PLAY SUCCESS SOUND ---
                                         await _audioPlayer.play(AssetSource('audio/inout.wav'));
 
@@ -543,11 +570,11 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                                   "",
                                             ),
                                           ),
-                                        ); 
+                                        ); // Navigate to StudentDisplaySignInPage on successful manual input
                                         _idController.clear();
                                       } else {
                                         if (mounted) {
-                                          
+
                                           // --- ADDED: PLAY ERROR SOUND ---
                                           await _audioPlayer.play(AssetSource('audio/wrong.wav'));
 
@@ -560,7 +587,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                                     "Your student id is not available. Try again.",
                                               ),
                                             ),
-                                          ); 
+                                          ); // Navigate to StudentErrorPage if manual input ID is not found in database
                                         }
                                       }
                                     } catch (e) {
@@ -621,8 +648,8 @@ class _ManualInputPageState extends State<ManualInputPage> {
         ),
       ),
     );
-  }
-}
+  } // Widget build
+} // End of ManualInputPage ------------------------------------------
 
 /* ------------------------------------------------------------------
       Student Display Sign-In Page (Shows student info after scanning)
@@ -648,6 +675,9 @@ class StudentDisplaySignInPage extends StatefulWidget {
       _StudentDisplaySignInPageState();
 }
 
+// Timer logic is implemented here to automatically return to the scanner page after 4 seconds.
+// The current time is also calculated and displayed on this page based on the time of the sign-in or sign-out action.
+// The UI changes dynamically based on whether the student is logging in or out, showing different icons, messages, and status text accordingly.
 class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
   @override
   void initState() {
@@ -661,15 +691,19 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
 
   @override
   Widget build(BuildContext context) {
+    // --- FIXED TIME LOGIC HERE ---
     final now = DateTime.now();
     final hour =
         now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
     final minute = now.minute.toString().padLeft(2, '0');
     final period = now.hour >= 12 ? "PM" : "AM";
     String currentTime = "$hour:$minute $period";
+    // -----------------------------
 
     bool isLoggingIn = widget.action == "In";
 
+    // Design the UI to show student info and whether they are logging in or out, along with the time of the action.
+    // After 4 seconds, it will automatically return to the scanner page.
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -691,14 +725,16 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Icon changes based on action
                 Icon(isLoggingIn ? Icons.verified : Icons.exit_to_app,
                     color: isLoggingIn ? Colors.lightBlue : Colors.orange,
                     size: 80),
                 const SizedBox(height: 20),
+                // Text changes based on action
                 Text(
                     isLoggingIn
-                        ? "Welcome to the Library"
-                        : "Goodbye! See you soon",
+                        ? "Welcome to the Library" // logging in message
+                        : "Goodbye! See you soon", // logging out message
                     style: const TextStyle(
                         fontSize: 32, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
@@ -733,6 +769,7 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
                   children: [
                     const Icon(Icons.access_time, size: 18, color: Colors.blue),
                     const SizedBox(width: 8),
+                    // Status text changes based on action
                     Text(
                       isLoggingIn
                           ? "Logged in at $currentTime"
@@ -750,8 +787,8 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
         ),
       ),
     );
-  }
-}
+  } // Widget build
+} // End of StudentDisplaySignInPage -------------------------------------
 
 /* ------------------------------------------------------------------
       Student Error Page (Shows when ID is invalid)
@@ -769,14 +806,24 @@ class StudentErrorPage extends StatefulWidget {
 }
 
 class _StudentErrorPageState extends State<StudentErrorPage> {
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+
+    // Auto close after 4 seconds
+    _timer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
         Navigator.pop(context);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -792,30 +839,84 @@ class _StudentErrorPageState extends State<StudentErrorPage> {
           ),
         ),
         child: Center(
-          child: Container(
-            width: 700,
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.redAccent, size: 80),
-                const SizedBox(height: 20),
-                const Text("Scan Failed",
-                    style:
-                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-                Text(
-                  widget.errorMessage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, color: Colors.black54),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/wvsu_logo.png', width: 130),
+              const SizedBox(height: 30),
+
+              // OUTER CARD
+              Container(
+                width: 950,
+                height: 500,
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF2F8),
+                  borderRadius: BorderRadius.circular(40),
                 ),
-              ],
-            ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6DDF0),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // RED WARNING TRIANGLE
+                      const Icon(
+                        Icons.warning_rounded,
+                        color: Colors.red,
+                        size: 90,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // TITLE (fixed text to match design)
+                      const Text(
+                        "Card Not Available",
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+
+                      // SUBTEXT
+                      const Text(
+                        "Your RFID card could not be detected.\n"
+                        "Please try scanning again or enter your User ID\n"
+                        "manually to proceed.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      // DISABLED INPUT FIELD (design only)
+                      Container(
+                        width: 420,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFE5E5E5),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const TextField(
+                          enabled: false,
+                          textAlign: TextAlign.center,
+                          decoration: InputDecoration(
+                            hintText: "Enter Student ID (e.g., 2021M1020)",
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -31,7 +31,7 @@ try {
     // ===============================
     $query = "SELECT 
                 l.Scan_Date as date, 
-                l.Time_In as signIn, 
+                DATE_FORMAT(l.Time_In, '%h:%i %p') as signIn,
                 l.Time_Out as signOut, 
                 CONCAT(s.First_Name, ' ', s.Last_Name) as name, 
                 s.Student_Number as studentId, 
