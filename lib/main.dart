@@ -181,7 +181,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   // FocusNode and Controller to manage the "hidden" scanner input
   final FocusNode _barcodeFocusNode = FocusNode();
   final TextEditingController _barcodeController = TextEditingController();
-  
+
   // ADDED: Create the audio player for the scanner
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -219,7 +219,6 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       if (studentData != null &&
           studentData['status'] == 'success' &&
           mounted) {
-        
         // --- ADDED: PLAY SUCCESS SOUND ---
         await _audioPlayer.play(AssetSource('audio/inout.wav'));
 
@@ -239,7 +238,6 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
         // --- CONDITION: NO STUDENT ID PRESENT IN DATABASE ---
         // This happens when PHP returns "status": "error"
         if (mounted) {
-          
           // --- ADDED: PLAY ERROR SOUND ---
           await _audioPlayer.play(AssetSource('audio/wrong.wav'));
 
@@ -257,7 +255,6 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
       // --- CONDITION: NOT CONNECTED TO DATABASE / WIFI ISSUES ---
       // This happens if the server IP is wrong, MySQL is off, or Wifi is down
       if (mounted) {
-        
         // --- ADDED: PLAY ERROR SOUND FOR NETWORK ---
         await _audioPlayer.play(AssetSource('audio/wrong.wav'));
 
@@ -419,9 +416,9 @@ bool isLibraryClosed() {
   final now = DateTime.now();
   // Returns true if it's 6 PM (18) or later, OR before 7 AM
   // Temporarily disabled for testing purposes. Uncomment the line below to enable time-based access control.
-  // return DateTime.now().hour >= 18 || DateTime.now().hour < 7;
+  return DateTime.now().hour >= 18 || DateTime.now().hour < 7;
   // (not sure what is the exact time range for the library, adjust as needed)
-  return false; // For testing purposes, always allow access
+  // return false; // For testing purposes, always allow access
 }
 
 /* ---------------------------------------------------------
@@ -436,10 +433,10 @@ class ManualInputPage extends StatefulWidget {
 
 class _ManualInputPageState extends State<ManualInputPage> {
   final TextEditingController _idController = TextEditingController();
-  
+
   // ADDED: Create the audio player for the manual input screen too
   final AudioPlayer _audioPlayer = AudioPlayer();
-  
+
   bool _isLoading = false;
 
   @override
@@ -542,9 +539,9 @@ class _ManualInputPageState extends State<ManualInputPage> {
 
                                       if (studentData != null &&
                                           studentData['status'] == 'success') {
-                                        
                                         // --- ADDED: PLAY SUCCESS SOUND ---
-                                        await _audioPlayer.play(AssetSource('audio/inout.wav'));
+                                        await _audioPlayer.play(
+                                            AssetSource('audio/inout.wav'));
 
                                         Navigator.pushReplacement(
                                           context,
@@ -574,9 +571,9 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                         _idController.clear();
                                       } else {
                                         if (mounted) {
-
                                           // --- ADDED: PLAY ERROR SOUND ---
-                                          await _audioPlayer.play(AssetSource('audio/wrong.wav'));
+                                          await _audioPlayer.play(
+                                              AssetSource('audio/wrong.wav'));
 
                                           Navigator.pushReplacement(
                                             context,
@@ -593,9 +590,10 @@ class _ManualInputPageState extends State<ManualInputPage> {
                                     } catch (e) {
                                       if (!mounted) return;
                                       setState(() => _isLoading = false);
-                                      
+
                                       // --- ADDED: PLAY ERROR SOUND FOR NETWORK ---
-                                      await _audioPlayer.play(AssetSource('audio/wrong.wav'));
+                                      await _audioPlayer
+                                          .play(AssetSource('audio/wrong.wav'));
 
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -812,8 +810,8 @@ class _StudentErrorPageState extends State<StudentErrorPage> {
   void initState() {
     super.initState();
 
-    // Auto close after 4 seconds
-    _timer = Timer(const Duration(seconds: 4), () {
+    // Auto close after 2 seconds
+    _timer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);
       }
@@ -883,7 +881,7 @@ class _StudentErrorPageState extends State<StudentErrorPage> {
 
                       // SUBTEXT
                       const Text(
-                        "Your RFID card could not be detected.\n"
+                        "Your ID card could not be scanned.\n"
                         "Please try scanning again or enter your User ID\n"
                         "manually to proceed.",
                         textAlign: TextAlign.center,
@@ -894,24 +892,6 @@ class _StudentErrorPageState extends State<StudentErrorPage> {
                         ),
                       ),
                       const SizedBox(height: 30),
-
-                      // DISABLED INPUT FIELD (design only)
-                      Container(
-                        width: 420,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFE5E5E5),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const TextField(
-                          enabled: false,
-                          textAlign: TextAlign.center,
-                          decoration: InputDecoration(
-                            hintText: "Enter Student ID (e.g., 2021M1020)",
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
