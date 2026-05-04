@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import './adminSession.dart';
 
-const String _apiUrl = "http://192.168.1.3/libgate_api/manage_admins.php";
+const String _apiUrl = "http://localhost/libgate_api/manage_admins.php";
 
 class ProfilePopUp extends StatelessWidget {
   final Widget child;

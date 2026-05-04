@@ -22,6 +22,7 @@ if (empty($scanned_id)) {
 $current_time = date("H:i:s");
 $current_date = date("Y-m-d");
 
+
 try {
     $conn->query("SET time_zone = '+08:00'");
 

@@ -7,10 +7,10 @@ class ApiService {
   // Use your local IP address for physical devices/Web
   // Use 10.0.2.2 for Android Emulator
   final String baseUrl = kIsWeb
-      ? 'http://192.168.254.135/libgate_api'
+      ? 'http://10.225.19.19/libgate_api'
       : Platform.isAndroid
-          ? 'http://10.0.2.2/libgate_api'
-          : 'http://192.168.254.135/libgate_api';
+      ? 'http://10.0.2.2/libgate_api'
+      : 'http://10.225.19.19/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
@@ -19,10 +19,9 @@ class ApiService {
     print("Sending scanned ID: $scannedId to $apiUrl");
 
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: {'scanned_id': scannedId.trim()},
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .post(Uri.parse(apiUrl), body: {'scanned_id': scannedId.trim()})
+          .timeout(const Duration(seconds: 5));
 
       print("HTTP Status: ${response.statusCode}");
 
@@ -44,7 +43,9 @@ class ApiService {
 
   // --- 2. RAW POST helper ---
   Future<Map<String, dynamic>?> rawPost(
-      String url, Map<String, String> body) async {
+    String url,
+    Map<String, String> body,
+  ) async {
     try {
       final response = await http
           .post(Uri.parse(url), body: body)
