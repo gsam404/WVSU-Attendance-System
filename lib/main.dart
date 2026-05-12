@@ -8,6 +8,44 @@ void main() {
   runApp(const MyApp());
 }
 
+// fixed transition
+
+class NoTransitionRoute<T> extends MaterialPageRoute<T> {
+  NoTransitionRoute({required super.builder});
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Duration get reverseTransitionDuration => Duration.zero;
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) =>
+      child;
+}
+
+
+// CUSTOM PAGE TRANSITIONS BUILDER
+class NoTransitionPageTransitionsBuilder extends PageTransitionsBuilder {
+  const NoTransitionPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
+}
+
 /* ---------------------------------------------------------
                             MyApp 
 ------------------------------------------------------------*/
@@ -22,6 +60,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Inter',
         useMaterial3: true,
+        // FIX: Removes janky slide animation on ALL page transitions (web-safe)
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: NoTransitionPageTransitionsBuilder(),
+            TargetPlatform.iOS: NoTransitionPageTransitionsBuilder(),
+            TargetPlatform.linux: NoTransitionPageTransitionsBuilder(),
+            TargetPlatform.macOS: NoTransitionPageTransitionsBuilder(),
+            TargetPlatform.windows: NoTransitionPageTransitionsBuilder(),
+          },
+        ),
       ),
       // Set the initial page to the AttendancePortal (the choice screen)
       home: const AttendancePortal(),
@@ -78,7 +126,7 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          NoTransitionRoute(
                               builder: (context) => const StudentCheckInPage()),
                         ); // Navigate to StudentCheckInPage when Student button is pressed
                       }, // Student button that navigates to StudentCheckInPage (which is the scanner page)
@@ -93,7 +141,7 @@ class AttendancePortal extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          NoTransitionRoute(
                               builder: (context) => const AdminLoginPage()),
                         ); // Navigate to AdminLoginPage when Admin button is pressed
                       }, // Admin button that navigates to AdminLoginPage (which is the admin login screen)
@@ -224,7 +272,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(
+          NoTransitionRoute(
             builder: (context) => StudentDisplaySignInPage(
               studentId: studentData['student_id']?.toString() ?? "N/A",
               studentName: studentData['full_name']?.toString() ?? "Unknown",
@@ -243,7 +291,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
 
           Navigator.push(
             context,
-            MaterialPageRoute(
+            NoTransitionRoute(
               builder: (context) => const StudentErrorPage(
                 errorMessage: "Your student ID is not available. Try again.",
               ),
@@ -367,7 +415,7 @@ ________________________________________________________________________________
                             ElevatedButton(
                               onPressed: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                NoTransitionRoute(
                                     builder: (context) =>
                                         const ManualInputPage()),
                               ), // Navigate to ManualInputPage when button is pressed
@@ -416,7 +464,7 @@ bool isLibraryClosed() {
   final now = DateTime.now();
   // Returns true if it's 6 PM (18) or later, OR before 7 AM
   // Temporarily disabled for testing purposes. Uncomment the line below to enable time-based access control.
-  return DateTime.now().hour >= 18 || DateTime.now().hour < 7;
+  return now.hour >= 18 || now.hour < 7;
   // (not sure what is the exact time range for the library, adjust as needed)
   // return false; // For testing purposes, always allow access
 }
@@ -545,7 +593,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
 
                                         Navigator.pushReplacement(
                                           context,
-                                          MaterialPageRoute(
+                                          NoTransitionRoute(
                                             builder: (context) =>
                                                 StudentDisplaySignInPage(
                                               studentId:
@@ -577,7 +625,7 @@ class _ManualInputPageState extends State<ManualInputPage> {
 
                                           Navigator.pushReplacement(
                                             context,
-                                            MaterialPageRoute(
+                                            NoTransitionRoute(
                                               builder: (context) =>
                                                   const StudentErrorPage(
                                                 errorMessage:
