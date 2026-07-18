@@ -1,16 +1,8 @@
-import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Use your local IP address for physical devices/Web
-  // Use 10.0.2.2 for Android Emulator
-  final String baseUrl = kIsWeb
-      ? 'http://10.225.19.19/libgate_api'
-      : Platform.isAndroid
-      ? 'http://10.0.2.2/libgate_api'
-      : 'http://10.225.19.19/libgate_api';
+  final String baseUrl = 'http://localhost/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
@@ -19,20 +11,24 @@ class ApiService {
     print("Sending scanned ID: $scannedId to $apiUrl");
 
     try {
-      final response = await http
-          .post(Uri.parse(apiUrl), body: {'scanned_id': scannedId.trim()})
-          .timeout(const Duration(seconds: 5));
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'scanned_id': scannedId.trim()
+      }).timeout(const Duration(seconds: 5));
 
       print("HTTP Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['status'] == 'success') {
-          print("Student found: ${data['student_id']} - ${data['full_name']}");
+        // Always return decoded JSON when the server responds 200.
+        // The caller can inspect `status` and use `message` to inform the user.
+        if (data is Map<String, dynamic>) {
+          if (data['status'] == 'success') {
+            print(
+                "Student found: ${data['student_id']} - ${data['full_name']}");
+          } else {
+            print("API Error: ${data['message']}");
+          }
           return data;
-        } else {
-          print("API Error: ${data['message']}");
-          return null;
         }
       }
     } catch (e) {
@@ -65,9 +61,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_dashboard_stats.php';
 
     try {
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -88,9 +83,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_attendance.php';
 
     try {
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -106,9 +100,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_analytics.php';
 
     try {
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -129,9 +122,8 @@ class ApiService {
     final String apiUrl = '$baseUrl/get_profile.php';
 
     try {
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(const Duration(seconds: 5));
+      final response =
+          await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

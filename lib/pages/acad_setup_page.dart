@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
-import 'package:wvsu_attendance_system/pages/adminSession.dart';
+import 'package:wvsu_attendance_system/pages/admin_session.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
 
@@ -75,8 +75,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           d.code.toLowerCase().contains(q)) {
         return true;
       }
-      return d.courses.any(
-          (c) => c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
+      return d.courses.any((c) =>
+          c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
     }).toList();
   }
 
@@ -141,7 +141,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
 
       if (data['status'] == 'success') {
         setState(() {
-          _departments.add(DepartmentModel(id: data['id'], name: name, code: code));
+          _departments
+              .add(DepartmentModel(id: data['id'], name: name, code: code));
           _deptNameCtrl.clear();
           _deptCodeCtrl.clear();
         });
@@ -246,7 +247,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1565C0)),
             onPressed: () async {
               try {
                 final response = await http.post(Uri.parse(apiUrl), body: {
@@ -496,8 +498,8 @@ class _DepartmentDirectory extends StatelessWidget {
                   Text('No departments yet.',
                       style: TextStyle(color: Colors.grey.shade500)),
                   Text('Add one using the form on the right.',
-                      style: TextStyle(
-                          color: Colors.grey.shade400, fontSize: 12)),
+                      style:
+                          TextStyle(color: Colors.grey.shade400, fontSize: 12)),
                 ],
               ),
             )
@@ -584,16 +586,16 @@ class _DepartmentTile extends StatelessWidget {
                   ),
                   // Course count chip
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${dept.courses.length} courses',
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade600),
+                      style:
+                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -626,8 +628,8 @@ class _DepartmentTile extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(8)),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(8)),
               ),
               child: Column(
                 children: [
@@ -722,8 +724,7 @@ class _CourseTile extends StatelessWidget {
           ),
           Expanded(
             child: Text(course.name,
-                style:
-                    const TextStyle(fontSize: 13, color: Color(0xFF374151))),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF374151))),
           ),
           _IconBtn(
             icon: Icons.close,
@@ -791,8 +792,7 @@ class _HowStep extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _HowStep(
-      {required this.num, required this.label, required this.color});
+  const _HowStep({required this.num, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -803,14 +803,11 @@ class _HowStep extends StatelessWidget {
             backgroundColor: color.withOpacity(0.15),
             child: Text(num,
                 style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: color))),
+                    fontSize: 11, fontWeight: FontWeight.bold, color: color))),
         const SizedBox(width: 8),
         Expanded(
           child: Text(label,
-              style:
-                  const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
         ),
       ],
     );
@@ -942,8 +939,7 @@ class _InfoStep extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style:
-                  const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
         ),
       ],
     );
@@ -979,9 +975,7 @@ class _StatChip extends StatelessWidget {
           const SizedBox(height: 2),
           Text('$value',
               style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: textColor)),
+                  fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
         ],
       ),
     );

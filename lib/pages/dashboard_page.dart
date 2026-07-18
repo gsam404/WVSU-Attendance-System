@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
-import 'package:wvsu_attendance_system/pages/adminSession.dart';
+import 'package:wvsu_attendance_system/pages/admin_session.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -38,7 +38,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // Guard: don't fetch if not logged in
     if (adminId.isEmpty) {
-      debugPrint("Dashboard Error: AdminSession.id is empty — user not logged in?");
+      debugPrint(
+          "Dashboard Error: AdminSession.id is empty — user not logged in?");
       if (mounted) setState(() => isLoading = false);
       return;
     }
@@ -69,8 +70,13 @@ class _DashboardPageState extends State<DashboardPage> {
         final List<dynamic> rawWeekly = data2['weekly'] ?? [];
 
         final List<Color> colors = [
-          const Color(0xFF3B82F6), Colors.orange, Colors.green,
-          Colors.cyan, Colors.red, Colors.purple, Colors.amber,
+          const Color(0xFF3B82F6),
+          Colors.orange,
+          Colors.green,
+          Colors.cyan,
+          Colors.red,
+          Colors.purple,
+          Colors.amber,
         ];
 
         List<PieChartSectionData> tempSections = [];
@@ -78,7 +84,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
         double grandTotal = pieData.fold(
           0.0,
-          (sum, item) => sum + (double.tryParse(item['value'].toString()) ?? 0.0),
+          (sum, item) =>
+              sum + (double.tryParse(item['value'].toString()) ?? 0.0),
         );
 
         for (int i = 0; i < pieData.length; i++) {
@@ -115,15 +122,14 @@ class _DashboardPageState extends State<DashboardPage> {
             pieLabels = tempLabels;
             weeklyData = List<int>.generate(
               7,
-              (i) => i < rawWeekly.length
-                  ? (rawWeekly[i] as num).toInt()
-                  : 0,
+              (i) => i < rawWeekly.length ? (rawWeekly[i] as num).toInt() : 0,
             );
             isLoading = false;
           });
         }
       } else {
-        debugPrint("HTTP error: ${response1.statusCode} / ${response2.statusCode}");
+        debugPrint(
+            "HTTP error: ${response1.statusCode} / ${response2.statusCode}");
         if (mounted) setState(() => isLoading = false);
       }
     } catch (e) {
@@ -160,7 +166,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 Container(
                   width: double.infinity,
                   color: const Color(0xFFD6D6D6),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 25),
                   child: const Text(
                     "Dashboard",
                     style: TextStyle(
@@ -216,7 +223,8 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String value, String label, IconData icon, Color color) {
     return Expanded(
       child: Container(
         height: 160,
@@ -315,12 +323,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                   ? [
                                       const Text(
                                         "No data today",
-                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                        style: TextStyle(
+                                            fontSize: 10, color: Colors.grey),
                                       )
                                     ]
                                   : pieLabels.map((item) {
                                       return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 3),
                                         child: Row(
                                           children: [
                                             Container(
@@ -488,8 +498,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: const Icon(Icons.chevron_left, color: Colors.black87),
                   onPressed: () {
                     setState(() {
-                      _focusedDay = DateTime(
-                          _focusedDay.year, _focusedDay.month - 1);
+                      _focusedDay =
+                          DateTime(_focusedDay.year, _focusedDay.month - 1);
                     });
                   },
                 ),
@@ -505,8 +515,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: const Icon(Icons.chevron_right, color: Colors.black87),
                   onPressed: () {
                     setState(() {
-                      _focusedDay = DateTime(
-                          _focusedDay.year, _focusedDay.month + 1);
+                      _focusedDay =
+                          DateTime(_focusedDay.year, _focusedDay.month + 1);
                     });
                   },
                 ),

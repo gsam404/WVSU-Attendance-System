@@ -79,18 +79,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
         return isset($row[$idx]) ? trim($row[$idx]) : null;
     };
 
-    // ── FIX: Delete only THIS admin's students instead of truncating everyone's ──
-    $del_stmt = $conn->prepare("DELETE FROM students WHERE admin_id = ?");
-    $del_stmt->bind_param("i", $admin_id);
-    $del_stmt->execute();
-    $del_stmt->close();
+    $prog_stmt = $conn->prepare("SELECT id FROM programs WHERE admin_id = ? AND (code = ? OR name = ?) LIMIT 1");
+    if (!$prog_stmt) {
+        echo json_encode(["status" => "error", "message" => "Prepare failed: " . $conn->error]);
+        exit;
+    }
 
-    // ── FIX: Insert includes admin_id ────────────────────────────────────────
     $stmt = $conn->prepare("
         INSERT INTO students 
-            (Student_Number, admin_id, Last_Name, First_Name, Middle_Name, Program,
-             Year_Level, Section, Date_of_Birth, Place_of_Birth, Gender, Email_Address)
+            (student_number, admin_id, last_name, first_name, middle_name, program_id,
+             year_level, section, date_of_birth, place_of_birth, gender, email_address)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            admin_id = VALUES(admin_id),
+            last_name = VALUES(last_name),
+            first_name = VALUES(first_name),
+            middle_name = VALUES(middle_name),
+            program_id = VALUES(program_id),
+            year_level = VALUES(year_level),
+            section = VALUES(section),
+            date_of_birth = VALUES(date_of_birth),
+            place_of_birth = VALUES(place_of_birth),
+            gender = VALUES(gender),
+            email_address = VALUES(email_address)
     ");
 
     $count  = 0;
@@ -115,9 +126,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
 
             if (empty($snum)) { $errors++; continue; }
 
+            $prog_id = null;
+            if (!empty($prog)) {
+                $prog_stmt->bind_param("iss", $admin_id, $prog, $prog);
+                $prog_stmt->execute();
+                $prog_res = $prog_stmt->get_result();
+                if ($prog_row = $prog_res->fetch_assoc()) {
+                    $prog_id = intval($prog_row['id']);
+                }
+                $prog_res->free();
+            }
+
             $stmt->bind_param(
-                "sissssssssss",
-                $snum, $admin_id, $lname, $fname, $mname, $prog,
+                "sississsssss",
+                $snum, $admin_id, $lname, $fname, $mname, $prog_id,
                 $yr, $sec, $dob, $pob, $gen, $email
             );
             $stmt->execute();
@@ -138,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
 
     fclose($handle);
     $stmt->close();
+    $prog_stmt->close();
 
 } else {
     echo json_encode(["status" => "error", "message" => "No file received by the server."]);

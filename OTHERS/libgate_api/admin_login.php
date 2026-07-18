@@ -22,7 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit;
     }
 
-    $stmt = $conn->prepare("SELECT id, full_name, email, password_hash, role, campus FROM admins WHERE email = ?");
+    $stmt = $conn->prepare(
+        "SELECT a.id, a.full_name, a.email, a.password_hash, a.role, c.name AS campus
+         FROM admins a
+         LEFT JOIN campuses c ON a.campus_id = c.id
+         WHERE a.email = ?"
+    );
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();

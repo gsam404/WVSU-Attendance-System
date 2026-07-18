@@ -43,7 +43,19 @@ try {
             $dept['courses'] = $courses;
             $departments[] = $dept;
         }
-        echo json_encode(["status" => "success", "data" => $departments]);
+
+        $school_years = [];
+        $sy_stmt = $conn->prepare("SELECT id, name, start_date, end_date FROM school_years ORDER BY start_date DESC");
+        if ($sy_stmt) {
+            $sy_stmt->execute();
+            $sy_result = $sy_stmt->get_result();
+            while ($sy = $sy_result->fetch_assoc()) {
+                $school_years[] = $sy;
+            }
+            $sy_stmt->close();
+        }
+
+        echo json_encode(["status" => "success", "data" => $departments, "school_years" => $school_years]);
         exit();
     }
 
@@ -89,6 +101,68 @@ try {
         if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
 
         $stmt->bind_param("ii", $id, $admin_id);
+        if ($stmt->execute()) {
+            echo json_encode(["status" => "success"]);
+        } else {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        exit();
+    }
+
+    // --- 5. ADD A SCHOOL YEAR ---
+    if ($action === 'add_school_year') {
+        $name = trim($_POST['name'] ?? '');
+        $start_date = trim($_POST['start_date'] ?? '');
+        $end_date = trim($_POST['end_date'] ?? '');
+
+        if (empty($name) || empty($start_date) || empty($end_date)) {
+            echo json_encode(["status" => "error", "message" => "Missing required school year fields."]);
+            exit();
+        }
+
+        $stmt = $conn->prepare("INSERT INTO school_years (name, start_date, end_date) VALUES (?, ?, ?)");
+        if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
+
+        $stmt->bind_param("sss", $name, $start_date, $end_date);
+        if ($stmt->execute()) {
+            echo json_encode(["status" => "success", "id" => $stmt->insert_id]);
+        } else {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        exit();
+    }
+
+    // --- 6. DELETE A SCHOOL YEAR ---
+    if ($action === 'delete_school_year') {
+        $id = intval($_POST['id'] ?? 0);
+        $stmt = $conn->prepare("DELETE FROM school_years WHERE id = ?");
+        if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
+
+        $stmt->bind_param("i", $id);
+        if ($stmt->execute()) {
+            echo json_encode(["status" => "success"]);
+        } else {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+        exit();
+    }
+
+    // --- 7. EDIT A SCHOOL YEAR ---
+    if ($action === 'edit_school_year') {
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $start_date = trim($_POST['start_date'] ?? '');
+        $end_date = trim($_POST['end_date'] ?? '');
+
+        if ($id <= 0 || empty($name) || empty($start_date) || empty($end_date)) {
+            echo json_encode(["status" => "error", "message" => "Missing required school year fields."]);
+            exit();
+        }
+
+        $stmt = $conn->prepare("UPDATE school_years SET name = ?, start_date = ?, end_date = ? WHERE id = ?");
+        if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
+
+        $stmt->bind_param("sssi", $name, $start_date, $end_date, $id);
         if ($stmt->execute()) {
             echo json_encode(["status" => "success"]);
         } else {

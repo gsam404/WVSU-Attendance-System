@@ -21,7 +21,7 @@ $today = date('Y-m-d');
 
 // 1. Total Visits today (this admin only) — use prepared statement
 $stmt = mysqli_prepare($conn,
-    "SELECT COUNT(*) as total FROM entry_logs WHERE admin_id = ? AND Scan_Date = ?"
+    "SELECT COUNT(*) as total FROM entry_logs WHERE admin_id = ? AND scan_date = ?"
 );
 if (!$stmt) {
     echo json_encode(["status" => "error", "message" => "DB prepare error (total): " . mysqli_error($conn)]);
@@ -35,12 +35,12 @@ mysqli_stmt_close($stmt);
 
 // 2. Department Breakdown for Pie Chart (this admin only) — use prepared statement
 $stmt2 = mysqli_prepare($conn,
-    "SELECT d.code AS Department, COUNT(l.Log_ID) AS count
+    "SELECT d.code AS Department, COUNT(l.log_id) AS count
      FROM entry_logs l
-     JOIN students s  ON l.Student_Number = s.Student_Number
-     JOIN programs  p ON s.Program        = p.code
+     JOIN students s ON l.student_number = s.student_number
+     JOIN programs p ON s.program_id = p.id
      JOIN departments d ON p.department_id = d.id
-     WHERE l.admin_id = ? AND l.Scan_Date = ?
+     WHERE l.admin_id = ? AND l.scan_date = ?
      GROUP BY d.id
      ORDER BY count DESC"
 );
