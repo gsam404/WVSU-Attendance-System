@@ -4,7 +4,6 @@ import 'package:wvsu_attendance_system/pages/admin_session.dart'; // Admin ID ch
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';

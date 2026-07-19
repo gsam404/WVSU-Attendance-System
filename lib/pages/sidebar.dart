@@ -9,6 +9,8 @@ import './student_records_management/student_records_management_page.dart';
 import './dashboard_page.dart';
 import './acad_setup_page.dart';
 import './admin_session.dart';
+import 'package:wvsu_attendance_system/permissions/permissions.dart';
+import 'package:wvsu_attendance_system/pages/access_denied_dialog.dart';
 
 class SideBar extends StatefulWidget {
   final int selectedIndex;
@@ -27,27 +29,29 @@ class _SideBarState extends State<SideBar> {
     {
       'icon': 'assets/dashboard.png',
       'title': 'Dashboard',
-      'page': const DashboardPage()
+      'page': const DashboardPage(),
     },
     {
       'icon': 'assets/analytics.png',
       'title': 'Analytics',
-      'page': const AnalyticsPage()
+      'page': const AnalyticsPage(),
     },
     {
       'icon': 'assets/attendance.png',
       'title': 'Attendance',
-      'page': const AttendancePage()
+      'page': const AttendancePage(),
     },
     {
       'icon': 'assets/acadsetup.png',
       'title': 'Academic Setup',
-      'page': const AcadSetupPage()
+      'page': const AcadSetupPage(),
+      'permission': Permissions.canManageAcademicSetup,
     },
     {
       'icon': 'assets/import.png',
       'title': 'Student Records',
-      'page': const StudentRecordsManagementPage()
+      'page': const StudentRecordsManagementPage(),
+      'permission': Permissions.canManageStudents,
     },
   ];
 
@@ -386,6 +390,14 @@ class _SideBarState extends State<SideBar> {
                       isSelected: selectedIndex == index,
                       isExpanded: isFullyExpanded,
                       onTap: () {
+                        // Setting Permissions
+                        final permission = item['permission'];
+
+                        if (permission != null && permission == false) {
+                          AccessDeniedDialog.show(context);
+                          return;
+                        }
+
                         setState(() => selectedIndex = index);
                         Navigator.pushReplacement(
                           context,
