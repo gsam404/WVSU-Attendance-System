@@ -3,14 +3,16 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart';
+import '../widgets/academic_dialog.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
+// ProgramModel & DepartmentModel
 
-class CourseModel {
+class ProgramModel {
   int? id;
   String name;
   String code;
-  CourseModel({this.id, required this.name, required this.code});
+  ProgramModel({this.id, required this.name, required this.code});
 }
 
 class DepartmentModel {
@@ -18,27 +20,27 @@ class DepartmentModel {
   String name;
   String code;
   bool isExpanded;
-  List<CourseModel> courses;
-  TextEditingController courseNameCtrl;
-  TextEditingController courseCodeCtrl;
+  List<ProgramModel> programs;
+  TextEditingController programNameCtrl;
+  TextEditingController programCodeCtrl;
 
   DepartmentModel({
     this.id,
     required this.name,
     required this.code,
     this.isExpanded = false,
-    List<CourseModel>? courses,
-  })  : courses = courses ?? [],
-        courseNameCtrl = TextEditingController(),
-        courseCodeCtrl = TextEditingController();
+    List<ProgramModel>? programs,
+  })  : programs = programs ?? [],
+        programNameCtrl = TextEditingController(),
+        programCodeCtrl = TextEditingController();
 
   void dispose() {
-    courseNameCtrl.dispose();
-    courseCodeCtrl.dispose();
+    programNameCtrl.dispose();
+    programCodeCtrl.dispose();
   }
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// AcadSetupPage
 
 class AcadSetupPage extends StatefulWidget {
   const AcadSetupPage({super.key});
@@ -50,7 +52,8 @@ class AcadSetupPage extends StatefulWidget {
 class _AcadSetupPageState extends State<AcadSetupPage> {
   final List<DepartmentModel> _departments = [];
 
-  // IMPORTANT: Change this to your computer's IP address if testing on a real phone!
+  DepartmentModel? _selectedDepartment;
+
   final String apiUrl = 'http://localhost/libgate_api/academic_api.php';
 
   bool _isLoading = true;
@@ -59,13 +62,12 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   final _deptCodeCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
 
-  String _searchQuery = '';
+  final String _searchQuery = '';
 
-  // Convenience getter so every call picks up the current session ID
   String get _adminId => AdminSession.id;
 
-  int get _totalCourses =>
-      _departments.fold(0, (sum, d) => sum + d.courses.length);
+  int get _totalPrograms =>
+      _departments.fold(0, (sum, d) => sum + d.programs.length);
 
   List<DepartmentModel> get _filtered {
     if (_searchQuery.isEmpty) return _departments;
@@ -75,7 +77,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           d.code.toLowerCase().contains(q)) {
         return true;
       }
-      return d.courses.any((c) =>
+      return d.programs.any((c) =>
           c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q));
     }).toList();
   }
@@ -86,23 +88,23 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     _fetchData();
   }
 
-  // ─── API CALLS ──────────────────────────────────────────────────────────────
-
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
         Uri.parse('$apiUrl?action=fetch&admin_id=$_adminId'),
       );
+      print(response.statusCode);
+      print(response.body);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] == 'success') {
           _departments.clear();
           for (var d in data['data']) {
-            List<CourseModel> coursesList = [];
-            if (d['courses'] != null) {
-              for (var c in d['courses']) {
-                coursesList.add(CourseModel(
+            List<ProgramModel> programsList = [];
+            if (d['programs'] != null) {
+              for (var c in d['programs']) {
+                programsList.add(ProgramModel(
                   id: int.parse(c['id'].toString()),
                   name: c['name'],
                   code: c['code'],
@@ -113,17 +115,24 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
               id: int.parse(d['id'].toString()),
               name: d['name'],
               code: d['code'],
-              courses: coursesList,
+              programs: programsList,
             ));
           }
         }
       }
-    } catch (e) {
+    } /*catch (e) {
       _showSnack('Error loading data from database');
+    } */
+
+    catch (e) {
+      print(e);
+      _showSnack(e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
   }
+
+  // _saveDepartment
 
   Future<void> _saveDepartment() async {
     final name = _deptNameCtrl.text.trim();
@@ -155,67 +164,97 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     }
   }
 
-  Future<void> _deleteDepartment(DepartmentModel dept) async {
-    if (dept.id == null) return;
-    try {
-      final response = await http.post(Uri.parse(apiUrl), body: {
-        'action': 'delete_dept',
-        'id': dept.id.toString(),
-        'admin_id': _adminId,
-      });
-      final data = jsonDecode(response.body);
-      if (data['status'] == 'success') {
-        setState(() => _departments.remove(dept));
-        dept.dispose();
-        _showSnack('Department "${dept.code}" removed.');
-      }
-    } catch (e) {
-      _showSnack('Failed to delete.');
-    }
+// showEditDepartmentDialog & _showEditProgramDialog
+
+  void _showEditDepartmentDialog(DepartmentModel department) {
+    final codeController = TextEditingController(text: department.code);
+    final nameController = TextEditingController(text: department.name);
+
+    showDialog(
+      context: context,
+      builder: (_) => AcademicDialog(
+        title: "Edit Department",
+        codeLabel: "Department Code",
+        nameLabel: "Department Name",
+        codeController: codeController,
+        nameController: nameController,
+        showDelete: true,
+        onDelete: () {
+          Navigator.pop(context);
+        },
+        onSave: () {
+          Navigator.pop(context);
+        },
+      ),
+    );
   }
 
-  Future<void> _addCourse(DepartmentModel dept) async {
-    final name = dept.courseNameCtrl.text.trim();
-    final code = dept.courseCodeCtrl.text.trim();
-    if (name.isEmpty || code.isEmpty || dept.id == null) return;
+  void _showEditProgramDialog(
+      DepartmentModel department, ProgramModel program) {
+    final codeController = TextEditingController(text: program.code);
+    final nameController = TextEditingController(text: program.name);
+
+    showDialog(
+      context: context,
+      builder: (_) => AcademicDialog(
+        title: "Edit Program",
+        departmentLabel: "Department",
+        departmentValue: "${department.name} - ${department.code}",
+        codeLabel: "Program Code",
+        nameLabel: "Program Name",
+        codeController: codeController,
+        nameController: nameController,
+        showDelete: true,
+        onDelete: () {
+          Navigator.pop(context);
+          _deleteProgram(program);
+        },
+        onSave: () {
+          Navigator.pop(context);
+          _editProgram(
+            program,
+            nameController.text.trim(),
+            codeController.text.trim(),
+          );
+        },
+      ),
+    );
+  }
+
+// _editProgram & _editDepartment
+  Future<void> _editProgram(
+    ProgramModel program,
+    String name,
+    String code,
+  ) async {
+    if (program.id == null) return;
 
     try {
-      final response = await http.post(Uri.parse(apiUrl), body: {
-        'action': 'add_course',
-        'department_id': dept.id.toString(),
-        'name': name,
-        'code': code,
-        'admin_id': _adminId,
-      });
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: {
+          'action': 'edit_program',
+          'id': program.id.toString(),
+          'name': name,
+          'code': code,
+          'admin_id': _adminId,
+        },
+      );
+
       final data = jsonDecode(response.body);
 
       if (data['status'] == 'success') {
         setState(() {
-          dept.courses.add(CourseModel(id: data['id'], name: name, code: code));
-          dept.courseNameCtrl.clear();
-          dept.courseCodeCtrl.clear();
+          program.name = name;
+          program.code = code;
         });
-        _showSnack('Course "$code" added under ${dept.code}.');
-      }
-    } catch (e) {
-      _showSnack('Failed to add course.');
-    }
-  }
 
-  Future<void> _deleteCourse(DepartmentModel dept, CourseModel course) async {
-    if (course.id == null) return;
-    try {
-      final response = await http.post(Uri.parse(apiUrl), body: {
-        'action': 'delete_course',
-        'id': course.id.toString(),
-        'admin_id': _adminId,
-      });
-      final data = jsonDecode(response.body);
-      if (data['status'] == 'success') {
-        setState(() => dept.courses.remove(course));
+        _showSnack('Program updated successfully.');
+      } else {
+        _showSnack(data['message']);
       }
     } catch (e) {
-      _showSnack('Failed to delete course.');
+      _showSnack('Failed to update program.');
     }
   }
 
@@ -278,6 +317,126 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     );
   }
 
+// _deleteDepartment & deleteProgram
+  Future<void> _deleteDepartment(DepartmentModel dept) async {
+    if (dept.id == null) return;
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'delete_dept',
+        'id': dept.id.toString(),
+        'admin_id': _adminId,
+      });
+      final data = jsonDecode(response.body);
+      if (data['status'] == 'success') {
+        setState(() => _departments.remove(dept));
+        dept.dispose();
+        _showSnack('Department "${dept.code}" removed.');
+      }
+    } catch (e) {
+      _showSnack('Failed to delete.');
+    }
+  }
+
+  Future<void> _deleteProgram(ProgramModel program) async {
+    if (program.id == null) return;
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'delete_program',
+        'id': program.id.toString(),
+        'admin_id': _adminId,
+      });
+      final data = jsonDecode(response.body);
+      if (data['status'] == 'success') {
+        await _fetchData();
+
+        _showSnack("Program deleted successfully.");
+      }
+    } catch (e) {
+      _showSnack('Failed to delete program.');
+    }
+  }
+
+// _showAddProgramDialog & showAddDepartment
+  void _showAddProgramDialog(DepartmentModel department) {
+    final codeController = TextEditingController();
+    final nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AcademicDialog(
+        title: "Add Program",
+        departmentLabel: "Department",
+        departmentValue: "${department.name} - ${department.code}",
+        codeLabel: "Program Code",
+        nameLabel: "Program Name",
+        codeController: codeController,
+        nameController: nameController,
+        onSave: () {
+          Navigator.pop(context);
+
+          /*       _addProgram(
+            department,
+            nameController.text.trim(),
+            codeController.text.trim(),
+          ); */
+        },
+      ),
+    );
+  }
+
+  void _showAddDepartmentDialog() {
+    final codeController = TextEditingController();
+    final nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AcademicDialog(
+        title: "Add Department",
+        codeLabel: "Department Code",
+        nameLabel: "Department Name",
+        codeController: codeController,
+        nameController: nameController,
+        onSave: () {
+          _deptCodeCtrl.text = codeController.text.trim();
+          _deptNameCtrl.text = nameController.text.trim();
+
+          Navigator.pop(context);
+
+          _saveDepartment();
+        },
+      ),
+    );
+  }
+
+// _addProgram &
+  Future<void> _addProgram(DepartmentModel dept) async {
+    final name = dept.programNameCtrl.text.trim();
+    final code = dept.programCodeCtrl.text.trim();
+    if (name.isEmpty || code.isEmpty || dept.id == null) return;
+
+    try {
+      final response = await http.post(Uri.parse(apiUrl), body: {
+        'action': 'add_program',
+        'department_id': dept.id.toString(),
+        'name': name,
+        'code': code,
+        'admin_id': _adminId,
+      });
+      final data = jsonDecode(response.body);
+
+      if (data['status'] == 'success') {
+        setState(() {
+          dept.programs
+              .add(ProgramModel(id: data['id'], name: name, code: code));
+        });
+        _showSnack('Program "$code" added under ${dept.code}.');
+      }
+    } catch (e) {
+      _showSnack('Failed to add program.');
+    }
+  }
+
+// Uncommented
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
@@ -330,48 +489,22 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
                       ? const Center(child: CircularProgressIndicator())
                       : SingleChildScrollView(
                           padding: const EdgeInsets.all(24),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ── LEFT: Department Directory ──────────────────
-                              Expanded(
-                                flex: 3,
-                                child: _DepartmentDirectory(
-                                  departments: _filtered,
-                                  totalDepts: _departments.length,
-                                  totalCourses: _totalCourses,
-                                  searchCtrl: _searchCtrl,
-                                  onSearch: (v) =>
-                                      setState(() => _searchQuery = v),
-                                  onDelete: _deleteDepartment,
-                                  onEdit: _editDepartment,
-                                  onAddCourse: _addCourse,
-                                  onDeleteCourse: _deleteCourse,
-                                  onToggle: (dept) => setState(
-                                      () => dept.isExpanded = !dept.isExpanded),
-                                ),
-                              ),
-
-                              const SizedBox(width: 20),
-
-                              // ── RIGHT: Info + Create Form ───────────────────
-                              SizedBox(
-                                width: 260,
-                                child: Column(
-                                  children: [
-                                    _HowItWorksCard(),
-                                    const SizedBox(height: 16),
-                                    _CreateDepartmentCard(
-                                      nameCtrl: _deptNameCtrl,
-                                      codeCtrl: _deptCodeCtrl,
-                                      onSave: _saveDepartment,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _AddingCourseCard(),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          child: _AcademicManager(
+                            departments: _departments,
+                            selectedDepartment: _selectedDepartment,
+                            onDepartmentSelected: (department) {
+                              setState(() {
+                                _selectedDepartment = department;
+                              });
+                            },
+                            onEditDepartment: _showEditDepartmentDialog,
+                            onEditProgram: _showEditProgramDialog,
+                            onDeleteDepartment: _deleteDepartment,
+                            onDeleteProgram: (program) {
+                              if (_selectedDepartment != null) {
+                                _deleteProgram(program);
+                              }
+                            },
                           ),
                         ),
                 ),
@@ -384,353 +517,216 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   }
 }
 
-// ─── Department Directory Card ────────────────────────────────────────────────
+// Two Panels
 
-class _DepartmentDirectory extends StatelessWidget {
+class _AcademicManager extends StatelessWidget {
   final List<DepartmentModel> departments;
-  final int totalDepts;
-  final int totalCourses;
-  final TextEditingController searchCtrl;
-  final ValueChanged<String> onSearch;
-  final void Function(DepartmentModel) onDelete;
-  final void Function(DepartmentModel) onEdit;
-  final void Function(DepartmentModel) onAddCourse;
-  final void Function(DepartmentModel, CourseModel) onDeleteCourse;
-  final void Function(DepartmentModel) onToggle;
+  final DepartmentModel? selectedDepartment;
+  final ValueChanged<DepartmentModel> onDepartmentSelected;
+  final ValueChanged<DepartmentModel> onEditDepartment;
+  final void Function(
+    DepartmentModel,
+    ProgramModel,
+  ) onEditProgram;
+  final ValueChanged<DepartmentModel> onDeleteDepartment;
+  final ValueChanged<ProgramModel> onDeleteProgram;
 
-  const _DepartmentDirectory({
+  const _AcademicManager({
     required this.departments,
-    required this.totalDepts,
-    required this.totalCourses,
-    required this.searchCtrl,
-    required this.onSearch,
-    required this.onDelete,
-    required this.onEdit,
-    required this.onAddCourse,
-    required this.onDeleteCourse,
-    required this.onToggle,
+    required this.selectedDepartment,
+    required this.onDepartmentSelected,
+    required this.onEditDepartment,
+    required this.onEditProgram,
+    required this.onDeleteDepartment,
+    required this.onDeleteProgram,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      height: 650,
+      child: Row(
         children: [
-          // Title + Search
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Department Directory',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937))),
-              SizedBox(
-                width: 220,
-                height: 36,
-                child: TextField(
-                  controller: searchCtrl,
-                  onChanged: onSearch,
-                  decoration: InputDecoration(
-                    hintText: 'Search dept. or course',
-                    hintStyle: const TextStyle(fontSize: 13),
-                    prefixIcon: const Icon(Icons.search, size: 18),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Stats row
-          Row(
-            children: [
-              _StatChip(
-                label: 'Departments',
-                value: totalDepts,
-                color: const Color(0xFFE3F2FD),
-                textColor: const Color(0xFF1565C0),
-              ),
-              const SizedBox(width: 12),
-              _StatChip(
-                label: 'Courses',
-                value: totalCourses,
-                color: const Color(0xFFE8F5E9),
-                textColor: const Color(0xFF2E7D32),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Department list
-          if (departments.isEmpty)
-            Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Column(
-                children: [
-                  Icon(Icons.school_outlined,
-                      size: 48, color: Colors.grey.shade400),
-                  const SizedBox(height: 8),
-                  Text('No departments yet.',
-                      style: TextStyle(color: Colors.grey.shade500)),
-                  Text('Add one using the form on the right.',
-                      style:
-                          TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-                ],
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: departments.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _DepartmentTile(
-                dept: departments[i],
-                onDelete: onDelete,
-                onEdit: onEdit,
-                onAddCourse: onAddCourse,
-                onDeleteCourse: onDeleteCourse,
-                onToggle: onToggle,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Department Tile ──────────────────────────────────────────────────────────
-
-class _DepartmentTile extends StatelessWidget {
-  final DepartmentModel dept;
-  final void Function(DepartmentModel) onDelete;
-  final void Function(DepartmentModel) onEdit;
-  final void Function(DepartmentModel) onAddCourse;
-  final void Function(DepartmentModel, CourseModel) onDeleteCourse;
-  final void Function(DepartmentModel) onToggle;
-
-  const _DepartmentTile({
-    required this.dept,
-    required this.onDelete,
-    required this.onEdit,
-    required this.onAddCourse,
-    required this.onDeleteCourse,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // Department header row
-          InkWell(
-            onTap: () => onToggle(dept),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  // Code badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      dept.code,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      dept.name,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  // Course count chip
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${dept.courses.length} courses',
-                      style:
-                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _IconBtn(
-                    icon: Icons.edit_outlined,
-                    color: const Color(0xFF1565C0),
-                    onTap: () => onEdit(dept),
-                  ),
-                  const SizedBox(width: 4),
-                  _IconBtn(
-                    icon: Icons.delete_outline,
-                    color: Colors.red,
-                    onTap: () => onDelete(dept),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    dept.isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    size: 18,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Expanded courses list + add row
-          if (dept.isExpanded)
-            Container(
+          // =======================
+          // Departments Panel
+          // =======================
+          Expanded(
+            child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(8)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                children: [
-                  if (dept.courses.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        'No courses yet. Add one below.',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade500),
-                      ),
-                    )
-                  else
-                    ...dept.courses.map((c) => _CourseTile(
-                          course: c,
-                          onDelete: () => onDeleteCourse(dept, c),
-                        )),
-
-                  // Add course row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    child: Row(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          flex: 3,
-                          child: _SmallField(
-                            ctrl: dept.courseNameCtrl,
-                            hint: 'New Course name under ${dept.code}',
+                        const Text(
+                          "Departments",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _SmallField(
-                            ctrl: dept.courseCodeCtrl,
-                            hint: 'Code',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          onPressed: () => onAddCourse(dept),
-                          icon: const Icon(Icons.add, size: 14),
-                          label: const Text('Add Course',
-                              style: TextStyle(fontSize: 12)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1565C0),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6)),
-                          ),
+                          onPressed: () {},
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text("Add"),
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 16),
+
+                    const Divider(),
+
+                    const SizedBox(height: 16),
+
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: departments.length,
+                        itemBuilder: (context, index) {
+                          final department = departments[index];
+
+                          final isSelected =
+                              selectedDepartment?.id == department.id;
+
+                          return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFFE3F2FD)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF1976D2)
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              child: ListTile(
+                                onTap: () {
+                                  onDepartmentSelected(department);
+                                },
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        department.name,
+                                        style: TextStyle(
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        color: Colors.blue,
+                                      ),
+                                      tooltip: "Edit Department",
+                                      onPressed: () {
+                                        onEditDepartment(department);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Text(department.code),
+                              ));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Course Tile ──────────────────────────────────────────────────────────────
-
-class _CourseTile extends StatelessWidget {
-  final CourseModel course;
-  final VoidCallback onDelete;
-
-  const _CourseTile({required this.course, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Row(
-        children: [
-          Container(
-              width: 4,
-              height: 4,
-              decoration: const BoxDecoration(
-                  color: Color(0xFF1565C0), shape: BoxShape.circle)),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 60,
-            child: Text(course.code,
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937))),
           ),
+
+          const SizedBox(width: 20),
+
+          // =======================
+          // Programs Panel
+          // =======================
           Expanded(
-            child: Text(course.name,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF374151))),
-          ),
-          _IconBtn(
-            icon: Icons.close,
-            color: Colors.red,
-            size: 16,
-            onTap: onDelete,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Programs",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text("Add"),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    const Divider(),
+
+                    const SizedBox(height: 16),
+
+                    Expanded(
+                      child: selectedDepartment == null
+                          ? const Center(
+                              child: Text("Select a department"),
+                            )
+                          : ListView.builder(
+                              itemCount: selectedDepartment!.programs.length,
+                              itemBuilder: (context, index) {
+                                final program =
+                                    selectedDepartment!.programs[index];
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  child: ListTile(
+                                    title: Text(program.name),
+                                    subtitle: Text(program.code),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit,
+                                              color: Colors.blue),
+                                          tooltip: "Edit Program",
+                                          onPressed: () {
+                                            onEditProgram(
+                                                selectedDepartment!, program);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    )
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -738,6 +734,7 @@ class _CourseTile extends StatelessWidget {
   }
 }
 
+/*
 // ─── How It Works Card ────────────────────────────────────────────────────────
 
 class _HowItWorksCard extends StatelessWidget {
@@ -774,7 +771,7 @@ class _HowItWorksCard extends StatelessWidget {
           const SizedBox(height: 8),
           _HowStep(
               num: '2',
-              label: 'Add course inside the department',
+              label: 'Add program inside the department',
               color: const Color(0xFF1565C0)),
           const SizedBox(height: 8),
           _HowStep(
@@ -813,6 +810,7 @@ class _HowStep extends StatelessWidget {
     );
   }
 }
+
 
 // ─── Create Department Card ───────────────────────────────────────────────────
 
@@ -877,53 +875,9 @@ class _CreateDepartmentCard extends StatelessWidget {
       ),
     );
   }
-}
+} */
 
-// ─── Adding a Course Info Card ────────────────────────────────────────────────
-
-class _AddingCourseCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Adding a Course',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F2937))),
-          const SizedBox(height: 12),
-          _InfoStep(
-              icon: Icons.touch_app_outlined,
-              text: 'Open the department card where the course belongs.'),
-          const SizedBox(height: 10),
-          _InfoStep(
-              icon: Icons.edit_outlined,
-              text:
-                  'Type the course name and code in the add row at the bottom.'),
-          const SizedBox(height: 10),
-          _InfoStep(
-              icon: Icons.check_circle_outline,
-              text:
-                  'Click Add Course to save it under the selected department.'),
-        ],
-      ),
-    );
-  }
-}
-
+/*
 class _InfoStep extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -944,7 +898,7 @@ class _InfoStep extends StatelessWidget {
       ],
     );
   }
-}
+} 
 
 // ─── Reusable Small Widgets ───────────────────────────────────────────────────
 
@@ -992,7 +946,7 @@ class _IconBtn extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
-    this.size = 18,
+    this.size = 20,
   });
 
   @override
@@ -1007,6 +961,7 @@ class _IconBtn extends StatelessWidget {
     );
   }
 }
+
 
 class _SmallField extends StatelessWidget {
   final TextEditingController ctrl;
@@ -1036,6 +991,7 @@ class _SmallField extends StatelessWidget {
     );
   }
 }
+
 
 class _FormLabel extends StatelessWidget {
   final String text;
@@ -1078,4 +1034,4 @@ class _FormField extends StatelessWidget {
       ),
     );
   }
-}
+} */

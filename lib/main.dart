@@ -8,6 +8,7 @@ void main() {
 /* ---------------------------------------------------------
                             MyApp 
 ------------------------------------------------------------*/
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
         useMaterial3: true,
       ),
-      // Set the initial page to the AttendancePortal (the choice screen)
+      // Initial page to the AttendancePortal (the choice screen)
       home: const AttendancePortal(),
     );
   } // Widget build
