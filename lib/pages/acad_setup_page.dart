@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart';
 import '../widgets/academic_dialog.dart';
+import '../utils/validators.dart';
+import '../utils/dialogs.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
 // ProgramModel & DepartmentModel
@@ -21,8 +23,6 @@ class DepartmentModel {
   String code;
   bool isExpanded;
   List<ProgramModel> programs;
-  TextEditingController programNameCtrl;
-  TextEditingController programCodeCtrl;
 
   DepartmentModel({
     this.id,
@@ -30,14 +30,9 @@ class DepartmentModel {
     required this.code,
     this.isExpanded = false,
     List<ProgramModel>? programs,
-  })  : programs = programs ?? [],
-        programNameCtrl = TextEditingController(),
-        programCodeCtrl = TextEditingController();
+  }) : programs = programs ?? [];
 
-  void dispose() {
-    programNameCtrl.dispose();
-    programCodeCtrl.dispose();
-  }
+  void dispose() {}
 }
 
 // AcadSetupPage
@@ -53,6 +48,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   final List<DepartmentModel> _departments = [];
 
   DepartmentModel? _selectedDepartment;
+  ProgramModel? _selectedProgram;
 
   final String apiUrl = 'http://localhost/libgate_api/academic_api.php';
 
@@ -132,11 +128,30 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     }
   }
 
-  // _saveDepartment
+  // _addDepartment
 
-  Future<void> _saveDepartment() async {
-    final name = _deptNameCtrl.text.trim();
-    final code = _deptCodeCtrl.text.trim();
+  Future<void> _addDepartment() async {
+    final name = Validators.normalize(_deptNameCtrl.text);
+    final code = Validators.normalize(_deptCodeCtrl.text);
+
+    String? error = Validators.required(name, "Department Name");
+    if (error != null) {
+      await DialogUtils.showError(
+        context,
+        error,
+      );
+      return;
+    }
+
+    error = Validators.required(code, "Department Code");
+    if (error != null) {
+      await DialogUtils.showError(
+        context,
+        error,
+      );
+      return;
+    }
+
     if (name.isEmpty || code.isEmpty) return;
 
     try {
@@ -149,13 +164,15 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
       final data = jsonDecode(response.body);
 
       if (data['status'] == 'success') {
-        setState(() {
-          _departments
-              .add(DepartmentModel(id: data['id'], name: name, code: code));
-          _deptNameCtrl.clear();
-          _deptCodeCtrl.clear();
-        });
-        _showSnack('Department "$code" added successfully.');
+        _deptNameCtrl.clear();
+        _deptCodeCtrl.clear();
+
+        await _fetchData();
+
+        await DialogUtils.showSuccess(
+          context,
+          'Department "$code" added successfully.',
+        );
       } else {
         _showSnack('Failed to save to database.');
       }
@@ -165,59 +182,202 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   }
 
 // showEditDepartmentDialog & _showEditProgramDialog
-
   void _showEditDepartmentDialog(DepartmentModel department) {
     final codeController = TextEditingController(text: department.code);
     final nameController = TextEditingController(text: department.name);
 
+    String? codeError;
+    String? nameError;
+
     showDialog(
       context: context,
-      builder: (_) => AcademicDialog(
-        title: "Edit Department",
-        codeLabel: "Department Code",
-        nameLabel: "Department Name",
-        codeController: codeController,
-        nameController: nameController,
-        showDelete: true,
-        onDelete: () {
-          Navigator.pop(context);
-        },
-        onSave: () {
-          Navigator.pop(context);
-        },
-      ),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AcademicDialog(
+              title: "Edit Department",
+              codeLabel: "Department Code",
+              nameLabel: "Department Name",
+              codeController: codeController,
+              nameController: nameController,
+              codeError: codeError,
+              nameError: nameError,
+              showDelete: true,
+              onDelete: () {
+                Navigator.pop(dialogContext);
+              },
+              onSave: () async {
+                final code = Validators.normalize(codeController.text);
+                final name = Validators.normalize(nameController.text);
+
+                // Clear previous errors
+                codeError = null;
+                nameError = null;
+
+                // Required validation
+                final codeRequired =
+                    Validators.required(code, "Department Code");
+                final nameRequired =
+                    Validators.required(name, "Department Name");
+
+                // Letters only validation
+                final codeLetters = codeRequired == null
+                    ? Validators.lettersOnly(
+                        code,
+                        "Department Code",
+                      )
+                    : null;
+
+                final nameLetters = nameRequired == null
+                    ? Validators.lettersOnly(
+                        name,
+                        "Department Name",
+                      )
+                    : null;
+
+                // Duplicate validation
+                final duplicateCode = Validators.isDuplicate(
+                  code,
+                  _departments.map((d) => d.code),
+                  ignore: department.code,
+                );
+
+                final duplicateName = Validators.isDuplicate(
+                  name,
+                  _departments.map((d) => d.name),
+                  ignore: department.name,
+                );
+
+                // Show all errors
+                setDialogState(() {
+                  codeError = codeRequired ??
+                      codeLetters ??
+                      (duplicateCode
+                          ? "Department Code already exists."
+                          : null);
+
+                  nameError = nameRequired ??
+                      nameLetters ??
+                      (duplicateName
+                          ? "Department Name already exists."
+                          : null);
+                });
+
+                if (codeError != null || nameError != null) {
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+
+                await _editDepartment(
+                  department,
+                  name,
+                  code,
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
   void _showEditProgramDialog(
-      DepartmentModel department, ProgramModel program) {
+    DepartmentModel department,
+    ProgramModel program,
+  ) {
     final codeController = TextEditingController(text: program.code);
     final nameController = TextEditingController(text: program.name);
 
+    String? codeError;
+    String? nameError;
+
     showDialog(
       context: context,
-      builder: (_) => AcademicDialog(
-        title: "Edit Program",
-        departmentLabel: "Department",
-        departmentValue: "${department.name} - ${department.code}",
-        codeLabel: "Program Code",
-        nameLabel: "Program Name",
-        codeController: codeController,
-        nameController: nameController,
-        showDelete: true,
-        onDelete: () {
-          Navigator.pop(context);
-          _deleteProgram(program);
-        },
-        onSave: () {
-          Navigator.pop(context);
-          _editProgram(
-            program,
-            nameController.text.trim(),
-            codeController.text.trim(),
-          );
-        },
-      ),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AcademicDialog(
+              title: "Edit Program",
+              departmentLabel: "Department",
+              departmentValue: "${department.name} - ${department.code}",
+              codeLabel: "Program Code",
+              nameLabel: "Program Name",
+              codeController: codeController,
+              nameController: nameController,
+              codeError: codeError,
+              nameError: nameError,
+              showDelete: true,
+              onDelete: () {
+                Navigator.pop(dialogContext);
+                _deleteProgram(program);
+              },
+              onSave: () async {
+                final code = Validators.normalize(codeController.text);
+                final name = Validators.normalize(nameController.text);
+
+                codeError = null;
+                nameError = null;
+
+                // Required
+                final codeRequired = Validators.required(code, "Program Code");
+
+                final nameRequired = Validators.required(name, "Program Name");
+
+                // Letters only
+                final codeLetters = codeRequired == null
+                    ? Validators.lettersOnly(
+                        code,
+                        "Program Code",
+                      )
+                    : null;
+
+                final nameLetters = nameRequired == null
+                    ? Validators.lettersOnly(
+                        name,
+                        "Program Name",
+                      )
+                    : null;
+
+                // Duplicate across ALL departments
+                final duplicateCode = Validators.isDuplicate(
+                  code,
+                  _departments.expand((d) => d.programs).map((p) => p.code),
+                  ignore: program.code,
+                );
+
+                final duplicateName = Validators.isDuplicate(
+                  name,
+                  _departments.expand((d) => d.programs).map((p) => p.name),
+                  ignore: program.name,
+                );
+
+                setDialogState(() {
+                  codeError = codeRequired ??
+                      codeLetters ??
+                      (duplicateCode ? "Program Code already exists." : null);
+
+                  nameError = nameRequired ??
+                      nameLetters ??
+                      (duplicateName ? "Program Name already exists." : null);
+                });
+
+                if (codeError != null || nameError != null) {
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+
+                await _editProgram(
+                  program,
+                  name,
+                  code,
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -227,7 +387,13 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     String name,
     String code,
   ) async {
-    if (program.id == null) return;
+    if (program.id == null) {
+      await DialogUtils.showError(
+        context,
+        "Program not found.",
+      );
+      return;
+    }
 
     try {
       final response = await http.post(
@@ -249,72 +415,73 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           program.code = code;
         });
 
-        _showSnack('Program updated successfully.');
+        await DialogUtils.showSuccess(
+          context,
+          'Program "$code" updated successfully.',
+        );
       } else {
-        _showSnack(data['message']);
+        await DialogUtils.showError(
+          context,
+          data['message'] ?? 'Failed to update program.',
+        );
       }
     } catch (e) {
-      _showSnack('Failed to update program.');
+      await DialogUtils.showError(
+        context,
+        'Failed to connect to the server.',
+      );
     }
   }
 
-  void _editDepartment(DepartmentModel dept) {
-    final nameCtrl = TextEditingController(text: dept.name);
-    final codeCtrl = TextEditingController(text: dept.code);
+  Future<void> _editDepartment(
+    DepartmentModel dept,
+    String name,
+    String code,
+  ) async {
+    if (dept.id == null) {
+      await DialogUtils.showError(
+        context,
+        "Department not found.",
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Edit Department'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Department Name'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: codeCtrl,
-              decoration: const InputDecoration(labelText: 'Department Code'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0)),
-            onPressed: () async {
-              try {
-                final response = await http.post(Uri.parse(apiUrl), body: {
-                  'action': 'edit_dept',
-                  'id': dept.id.toString(),
-                  'name': nameCtrl.text.trim(),
-                  'code': codeCtrl.text.trim(),
-                  'admin_id': _adminId,
-                });
-                final data = jsonDecode(response.body);
-                if (data['status'] == 'success') {
-                  setState(() {
-                    dept.name = nameCtrl.text.trim();
-                    dept.code = codeCtrl.text.trim();
-                  });
-                  _showSnack('Department updated.');
-                }
-              } catch (e) {
-                _showSnack('Failed to update.');
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: {
+          'action': 'edit_dept',
+          'id': dept.id.toString(),
+          'name': name,
+          'code': code,
+          'admin_id': _adminId,
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (data['status'] == 'success') {
+        setState(() {
+          dept.name = name;
+          dept.code = code;
+        });
+
+        await DialogUtils.showSuccess(
+          context,
+          'Department "$code" updated successfully.',
+        );
+      } else {
+        await DialogUtils.showError(
+          context,
+          data['message'] ?? 'Failed to update department.',
+        );
+      }
+    } catch (e) {
+      await DialogUtils.showError(
+        context,
+        'Failed to connect to the server.',
+      );
+    }
   }
 
 // _deleteDepartment & deleteProgram
@@ -349,7 +516,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
       if (data['status'] == 'success') {
         await _fetchData();
 
-        _showSnack("Program deleted successfully.");
+        _showSuccessDialog("Program deleted successfully.");
       }
     } catch (e) {
       _showSnack('Failed to delete program.');
@@ -361,26 +528,94 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     final codeController = TextEditingController();
     final nameController = TextEditingController();
 
+    String? codeError;
+    String? nameError;
+    DepartmentModel selectedDepartment = department;
+
     showDialog(
       context: context,
-      builder: (_) => AcademicDialog(
-        title: "Add Program",
-        departmentLabel: "Department",
-        departmentValue: "${department.name} - ${department.code}",
-        codeLabel: "Program Code",
-        nameLabel: "Program Name",
-        codeController: codeController,
-        nameController: nameController,
-        onSave: () {
-          Navigator.pop(context);
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AcademicDialog(
+              title: "Add Program",
+              showDepartmentDropdown: true,
+              departmentItems: _departments.map((d) => d.code).toList(),
+              selectedDepartment: selectedDepartment.code,
+              onDepartmentChanged: (value) {
+                setDialogState(() {
+                  selectedDepartment = _departments.firstWhere(
+                    (d) => d.code == value,
+                  );
+                });
+              },
+              codeLabel: "Program Code",
+              nameLabel: "Program Name",
+              codeController: codeController,
+              nameController: nameController,
+              codeError: codeError,
+              nameError: nameError,
+              onSave: () async {
+                final code = Validators.normalize(codeController.text);
+                final name = Validators.normalize(nameController.text);
 
-          /*       _addProgram(
-            department,
-            nameController.text.trim(),
-            codeController.text.trim(),
-          ); */
-        },
-      ),
+                // Clear previous errors
+                codeError = null;
+                nameError = null;
+
+                // Required validation
+                final codeRequired = Validators.required(code, "Program Code");
+                final nameRequired = Validators.required(name, "Program Name");
+
+                // Letters only validation
+                final codeLetters = codeRequired == null
+                    ? Validators.lettersOnly(code, "Program Code")
+                    : null;
+
+                final nameLetters = nameRequired == null
+                    ? Validators.lettersOnly(name, "Program Name")
+                    : null;
+
+                // Duplicate validation
+                final duplicateCode = Validators.isDuplicate(
+                  code,
+                  _departments.expand((d) => d.programs).map((p) => p.code),
+                );
+
+                final duplicateName = Validators.isDuplicate(
+                  name,
+                  _departments.expand((d) => d.programs).map((p) => p.name),
+                );
+
+                // Show ALL errors together
+                setDialogState(() {
+                  codeError = codeRequired ??
+                      codeLetters ??
+                      (duplicateCode ? "Program Code already exists." : null);
+
+                  nameError = nameRequired ??
+                      nameLetters ??
+                      (duplicateName ? "Program Name already exists." : null);
+                });
+
+                if (codeError != null || nameError != null) {
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+
+                await _addProgram(
+                  selectedDepartment,
+                  name,
+                  code,
+                );
+
+                await _fetchData();
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -388,30 +623,95 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     final codeController = TextEditingController();
     final nameController = TextEditingController();
 
+    String? codeError;
+    String? nameError;
+
     showDialog(
       context: context,
-      builder: (_) => AcademicDialog(
-        title: "Add Department",
-        codeLabel: "Department Code",
-        nameLabel: "Department Name",
-        codeController: codeController,
-        nameController: nameController,
-        onSave: () {
-          _deptCodeCtrl.text = codeController.text.trim();
-          _deptNameCtrl.text = nameController.text.trim();
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AcademicDialog(
+              title: "Add Department",
+              codeLabel: "Department Code",
+              nameLabel: "Department Name",
+              codeController: codeController,
+              nameController: nameController,
+              codeError: codeError,
+              nameError: nameError,
+              onSave: () async {
+                final code = Validators.normalize(codeController.text);
+                final name = Validators.normalize(nameController.text);
 
-          Navigator.pop(context);
+                // Clear previous errors
+                codeError = null;
+                nameError = null;
 
-          _saveDepartment();
-        },
-      ),
+                // Required validation
+                final codeRequired =
+                    Validators.required(code, "Department Code");
+                final nameRequired =
+                    Validators.required(name, "Department Name");
+
+                // Letters only validation
+                final codeLetters = codeRequired == null
+                    ? Validators.lettersOnly(code, "Department Code")
+                    : null;
+
+                final nameLetters = nameRequired == null
+                    ? Validators.lettersOnly(name, "Department Name")
+                    : null;
+
+                // Duplicate validation
+                final duplicateCode = Validators.isDuplicate(
+                  code,
+                  _departments.map((d) => d.code),
+                );
+
+                final duplicateName = Validators.isDuplicate(
+                  name,
+                  _departments.map((d) => d.name),
+                );
+
+                // Show ALL errors together
+                setDialogState(() {
+                  codeError = codeRequired ??
+                      codeLetters ??
+                      (duplicateCode
+                          ? "Department Code already exists."
+                          : null);
+
+                  nameError = nameRequired ??
+                      nameLetters ??
+                      (duplicateName
+                          ? "Department Name already exists."
+                          : null);
+                });
+
+                if (codeError != null || nameError != null) {
+                  return;
+                }
+
+                _deptCodeCtrl.text = code;
+                _deptNameCtrl.text = name;
+
+                Navigator.pop(dialogContext);
+
+                await _addDepartment();
+              },
+            );
+          },
+        );
+      },
     );
   }
 
 // _addProgram &
-  Future<void> _addProgram(DepartmentModel dept) async {
-    final name = dept.programNameCtrl.text.trim();
-    final code = dept.programCodeCtrl.text.trim();
+  Future<void> _addProgram(
+    DepartmentModel dept,
+    String name,
+    String code,
+  ) async {
     if (name.isEmpty || code.isEmpty || dept.id == null) return;
 
     try {
@@ -422,18 +722,92 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
         'code': code,
         'admin_id': _adminId,
       });
+
       final data = jsonDecode(response.body);
 
       if (data['status'] == 'success') {
         setState(() {
-          dept.programs
-              .add(ProgramModel(id: data['id'], name: name, code: code));
+          dept.programs.add(
+            ProgramModel(
+              id: data['id'],
+              name: name,
+              code: code,
+            ),
+          );
         });
-        _showSnack('Program "$code" added under ${dept.code}.');
+
+        await DialogUtils.showSuccess(
+          context,
+          'Program "$code" added successfully.',
+        );
+      } else {
+        await DialogUtils.showError(
+          context,
+          data['message'] ?? 'Failed to add program.',
+        );
       }
     } catch (e) {
-      _showSnack('Failed to add program.');
+      await DialogUtils.showError(
+        context,
+        'Failed to connect to the server.',
+      );
     }
+  }
+
+  // _showSuccessDialog
+  void _showSuccessDialog(String message) {
+    print("Showing success dialog");
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () {
+              Navigator.pop(dialogContext);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Colors.green,
+                    child: Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  const Text(
+                    "Click anywhere to close",
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
 // Uncommented
@@ -505,6 +879,8 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
                                 _deleteProgram(program);
                               }
                             },
+                            onAddDepartment: _showAddDepartmentDialog,
+                            onAddProgram: _showAddProgramDialog,
                           ),
                         ),
                 ),
@@ -530,6 +906,8 @@ class _AcademicManager extends StatelessWidget {
   ) onEditProgram;
   final ValueChanged<DepartmentModel> onDeleteDepartment;
   final ValueChanged<ProgramModel> onDeleteProgram;
+  final VoidCallback onAddDepartment;
+  final ValueChanged<DepartmentModel> onAddProgram;
 
   const _AcademicManager({
     required this.departments,
@@ -539,6 +917,8 @@ class _AcademicManager extends StatelessWidget {
     required this.onEditProgram,
     required this.onDeleteDepartment,
     required this.onDeleteProgram,
+    required this.onAddDepartment,
+    required this.onAddProgram,
   });
 
   @override
@@ -573,7 +953,7 @@ class _AcademicManager extends StatelessWidget {
                           ),
                         ),
                         ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: onAddDepartment,
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text("Add"),
                         ),
@@ -675,7 +1055,11 @@ class _AcademicManager extends StatelessWidget {
                           ),
                         ),
                         ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: selectedDepartment == null
+                              ? null
+                              : () {
+                                  onAddProgram(selectedDepartment!);
+                                },
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text("Add"),
                         ),

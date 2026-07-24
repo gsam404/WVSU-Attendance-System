@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
         useMaterial3: true,
       ),
-      // Initial page to the AttendancePortal (the choice screen)
+      // Initial page to the Student-Admin Portal
       home: const AttendancePortal(),
     );
   } // Widget build

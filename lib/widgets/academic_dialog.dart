@@ -7,8 +7,16 @@ class AcademicDialog extends StatelessWidget {
   final String? departmentLabel;
   final String? departmentValue;
 
+  final bool showDepartmentDropdown;
+  final List<String>? departmentItems;
+  final String? selectedDepartment;
+  final ValueChanged<String?>? onDepartmentChanged;
+
   final TextEditingController codeController;
   final TextEditingController nameController;
+
+  final String? codeError;
+  final String? nameError;
 
   final VoidCallback onSave;
   final VoidCallback? onDelete;
@@ -27,6 +35,12 @@ class AcademicDialog extends StatelessWidget {
     this.showDelete = false,
     this.departmentLabel,
     this.departmentValue,
+    this.showDepartmentDropdown = false,
+    this.departmentItems,
+    this.selectedDepartment,
+    this.onDepartmentChanged,
+    this.codeError,
+    this.nameError,
   });
 
   @override
@@ -45,7 +59,34 @@ class AcademicDialog extends StatelessWidget {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-            if (departmentLabel != null && departmentValue != null) ...[
+            if (showDepartmentDropdown) ...[
+              const Text(
+                "Department",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: selectedDepartment,
+                items: departmentItems!
+                    .map(
+                      (dept) => DropdownMenuItem(
+                        value: dept,
+                        child: Text(dept),
+                      ),
+                    )
+                    .toList(),
+                onChanged: onDepartmentChanged,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const Divider(height: 28),
+            ] else if (departmentLabel != null && departmentValue != null) ...[
               Text(
                 departmentLabel!,
                 style: const TextStyle(
@@ -71,7 +112,10 @@ class AcademicDialog extends StatelessWidget {
             const SizedBox(height: 8),
             TextField(
               controller: codeController,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                errorText: codeError,
+              ),
             ),
             const SizedBox(height: 18),
             Text(
@@ -81,7 +125,10 @@ class AcademicDialog extends StatelessWidget {
             const SizedBox(height: 8),
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                errorText: nameError,
+              ),
             ),
             const SizedBox(height: 24),
             if (showDelete)
