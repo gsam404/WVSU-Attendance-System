@@ -23,6 +23,8 @@ class AcademicDialog extends StatelessWidget {
 
   final bool showDelete;
 
+  final bool deleteEnabled;
+
   const AcademicDialog({
     super.key,
     required this.title,
@@ -41,6 +43,7 @@ class AcademicDialog extends StatelessWidget {
     this.onDepartmentChanged,
     this.codeError,
     this.nameError,
+    this.deleteEnabled = true,
   });
 
   @override
@@ -135,11 +138,16 @@ class AcademicDialog extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  label: const Text(
+                  onPressed: deleteEnabled ? onDelete : null,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: deleteEnabled ? Colors.red : Colors.grey,
+                  ),
+                  label: Text(
                     "Delete",
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(
+                      color: deleteEnabled ? Colors.red : Colors.grey,
+                    ),
                   ),
                 ),
               ),

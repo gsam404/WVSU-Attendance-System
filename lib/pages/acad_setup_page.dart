@@ -203,8 +203,10 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
               codeError: codeError,
               nameError: nameError,
               showDelete: true,
-              onDelete: () {
+              deleteEnabled: department.programs.isEmpty,
+              onDelete: () async {
                 Navigator.pop(dialogContext);
+                await _deleteDepartment(department);
               },
               onSave: () async {
                 final code = Validators.normalize(codeController.text);
@@ -487,39 +489,91 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
 // _deleteDepartment & deleteProgram
   Future<void> _deleteDepartment(DepartmentModel dept) async {
     if (dept.id == null) return;
+
+    final confirmed = await DialogUtils.showDeleteConfirmation(
+      context,
+      title: "Delete Department",
+      message: 'Are you sure you want to delete "${dept.name}"?',
+    );
+
+    if (!confirmed) return;
+
     try {
-      final response = await http.post(Uri.parse(apiUrl), body: {
-        'action': 'delete_dept',
-        'id': dept.id.toString(),
-        'admin_id': _adminId,
-      });
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: {
+          'action': 'delete_dept',
+          'id': dept.id.toString(),
+          'admin_id': _adminId,
+        },
+      );
+
       final data = jsonDecode(response.body);
+
       if (data['status'] == 'success') {
-        setState(() => _departments.remove(dept));
+        setState(() {
+          _departments.removeWhere((d) => d.id == dept.id);
+
+          if (_selectedDepartment?.id == dept.id) {
+            _selectedDepartment = null;
+            _selectedProgram = null;
+          }
+        });
+
         dept.dispose();
-        _showSnack('Department "${dept.code}" removed.');
+
+        await DialogUtils.showSuccess(
+          context,
+          'Department "${dept.code}" deleted successfully.',
+        );
       }
     } catch (e) {
-      _showSnack('Failed to delete.');
+      await DialogUtils.showError(
+        context,
+        'Failed to delete department.',
+      );
     }
   }
 
   Future<void> _deleteProgram(ProgramModel program) async {
     if (program.id == null) return;
+
+    final confirmed = await DialogUtils.showDeleteConfirmation(
+      context,
+      title: "Delete Program",
+      message: 'Are you sure you want to delete "${program.name}"?',
+    );
+
+    if (!confirmed) return;
+
     try {
       final response = await http.post(Uri.parse(apiUrl), body: {
         'action': 'delete_program',
         'id': program.id.toString(),
         'admin_id': _adminId,
       });
-      final data = jsonDecode(response.body);
-      if (data['status'] == 'success') {
-        await _fetchData();
 
-        _showSuccessDialog("Program deleted successfully.");
+      final data = jsonDecode(response.body);
+
+      if (data['status'] == 'success') {
+        setState(() {
+          _selectedDepartment?.programs.removeWhere(
+            (p) => p.id == program.id,
+          );
+
+          _selectedProgram = null;
+        });
+
+        await DialogUtils.showSuccess(
+          context,
+          'Program "${program.code}" deleted successfully.',
+        );
       }
     } catch (e) {
-      _showSnack('Failed to delete program.');
+      await DialogUtils.showError(
+        context,
+        'Failed to delete program.',
+      );
     }
   }
 
@@ -754,62 +808,6 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
     }
   }
 
-  // _showSuccessDialog
-  void _showSuccessDialog(String message) {
-    print("Showing success dialog");
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              Navigator.pop(dialogContext);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(30),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.green,
-                    child: Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    "Click anywhere to close",
-                    style: TextStyle(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
 // Uncommented
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -866,9 +864,16 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
                           child: _AcademicManager(
                             departments: _departments,
                             selectedDepartment: _selectedDepartment,
+                            selectedProgram: _selectedProgram,
                             onDepartmentSelected: (department) {
                               setState(() {
                                 _selectedDepartment = department;
+                                _selectedProgram = null;
+                              });
+                            },
+                            onProgramSelected: (program) {
+                              setState(() {
+                                _selectedProgram = program;
                               });
                             },
                             onEditDepartment: _showEditDepartmentDialog,
@@ -909,16 +914,21 @@ class _AcademicManager extends StatelessWidget {
   final VoidCallback onAddDepartment;
   final ValueChanged<DepartmentModel> onAddProgram;
 
+  final ProgramModel? selectedProgram;
+  final ValueChanged<ProgramModel> onProgramSelected;
+
   const _AcademicManager({
     required this.departments,
     required this.selectedDepartment,
     required this.onDepartmentSelected,
+    required this.selectedProgram,
     required this.onEditDepartment,
     required this.onEditProgram,
     required this.onDeleteDepartment,
     required this.onDeleteProgram,
     required this.onAddDepartment,
     required this.onAddProgram,
+    required this.onProgramSelected,
   });
 
   @override
@@ -1004,16 +1014,17 @@ class _AcademicManager extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        color: Colors.blue,
+                                    if (isSelected)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          color: Colors.blue,
+                                        ),
+                                        tooltip: "Edit Department",
+                                        onPressed: () {
+                                          onEditDepartment(department);
+                                        },
                                       ),
-                                      tooltip: "Edit Department",
-                                      onPressed: () {
-                                        onEditDepartment(department);
-                                      },
-                                    ),
                                   ],
                                 ),
                                 subtitle: Text(department.code),
@@ -1083,25 +1094,25 @@ class _AcademicManager extends StatelessWidget {
                                 final program =
                                     selectedDepartment!.programs[index];
 
+                                final isSelected =
+                                    selectedProgram?.id == program.id;
+
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 10),
                                   child: ListTile(
+                                    onTap: () {
+                                      onProgramSelected(program);
+                                    },
                                     title: Text(program.name),
                                     subtitle: Text(program.code),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit,
-                                              color: Colors.blue),
-                                          tooltip: "Edit Program",
-                                          onPressed: () {
-                                            onEditProgram(
-                                                selectedDepartment!, program);
-                                          },
-                                        ),
-                                      ],
-                                    ),
+                                    trailing: isSelected
+                                        ? IconButton(
+                                            icon: const Icon(Icons.edit,
+                                                color: Colors.blue),
+                                            onPressed: () => onEditProgram(
+                                                selectedDepartment!, program),
+                                          )
+                                        : null,
                                   ),
                                 );
                               },
