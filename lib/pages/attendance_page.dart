@@ -10,6 +10,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:csv/csv.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class AttendancePage extends StatefulWidget {
   const AttendancePage({super.key});
@@ -60,8 +61,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Timer? _pollTimer;
 
-  static const String _base =
-      'http://localhost/libgate_api/get_attendance.php'; // IP for tablet
+  static const String _base = ApiConfig.attendance;
 
   @override
   void initState() {

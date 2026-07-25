@@ -11,6 +11,7 @@ import './acad_setup_page.dart';
 import './admin_session.dart';
 import 'package:wvsu_attendance_system/permissions/permissions.dart';
 import 'package:wvsu_attendance_system/pages/access_denied_dialog.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class SideBar extends StatefulWidget {
   final int selectedIndex;
@@ -188,7 +189,7 @@ class _SideBarState extends State<SideBar> {
 
             try {
               final response = await http.post(
-                Uri.parse('http://localhost/libgate_api/change_password.php'),
+                Uri.parse(ApiConfig.changePassword),
                 body: {
                   'id': AdminSession.id.toString(),
                   'old_password': oldPass,

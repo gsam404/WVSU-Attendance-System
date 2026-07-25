@@ -4,6 +4,7 @@ import 'package:wvsu_attendance_system/pages/sidebar.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart'; // ← ADD
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -13,8 +14,6 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
-  static const String _base = 'http://localhost/libgate_api';
-
   String weeklyPeakDay = "None";
   String weeklyTopDepartment = "None";
   String weeklyTopCourse = "None";
@@ -47,7 +46,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final adminId = AdminSession.id;
     try {
       final response = await http.get(
-        Uri.parse('$_base/get_analytics.php?admin_id=$adminId'),
+        Uri.parse('${ApiConfig.analytics}?admin_id=$adminId'),
       );
 
       if (response.statusCode == 200) {

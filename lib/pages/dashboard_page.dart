@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/sidebar.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -24,8 +25,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay = DateTime.now();
-
-  static const String _base = 'http://localhost/libgate_api';
 
   @override
   void initState() {
@@ -46,10 +45,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final response1 = await http.get(
-        Uri.parse('$_base/get_dashboard_stats.php?admin_id=$adminId'),
+        Uri.parse('${ApiConfig.dashboardStats}?admin_id=$adminId'),
       );
       final response2 = await http.get(
-        Uri.parse('$_base/get_analytics.php?admin_id=$adminId'),
+        Uri.parse('${ApiConfig.analytics}?admin_id=$adminId'),
       );
 
       debugPrint("Stats response: ${response1.body}");

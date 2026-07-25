@@ -1,10 +1,12 @@
+
+
+<?php
+
 // ======================================================
 // GET LOGGED-IN ADMIN INFORMATION
 // Retrieves the admin's campus and role
 // Used to determine which academic data can be accessed.
 // ======================================================
-
-<?php
 
 // ======================================================
 // INITIAL SETUP
@@ -63,9 +65,6 @@ try {
 // FETCH ACADEMIC DATA
 // Loads departments, programs, and school years
 // ======================================================
-if ($action === 'fetch') {
-    ...
-}
 
     if ($action === 'fetch') {
         $departments = [];

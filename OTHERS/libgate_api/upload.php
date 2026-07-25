@@ -48,7 +48,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
         echo json_encode(["status" => "error", "message" => "CSV file is empty or unreadable."]);
         exit;
     }
-    $headers = array_map(fn($h) => strtolower(trim(str_replace("\xEF\xBB\xBF", '', $h ?? ''))), $headers);
+
+    $headers = array_map(function ($h) {
+    $h = strtolower(trim(str_replace("\xEF\xBB\xBF", '', $h ?? '')));
+    $h = preg_replace('/[^a-z0-9]+/', '_', $h);
+    return trim($h, '_');
+}, $headers); $headers);
+
+    function findHeader($headers, $possibleNames) {
+    foreach ($possibleNames as $name) {
+        $index = array_search($name, $headers);
+        if ($index !== false) {
+            return $index;
+        }
+    }
+    return false;
+}
 
     // Map DB columns to CSV indices
     $colMap = [

@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:wvsu_attendance_system/pages/dashboard_page.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
+
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -35,7 +37,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost/libgate_api/admin_login.php'),
+        Uri.parse(ApiConfig.adminLogin),
         body: {'email': email, 'password': password},
       );
 

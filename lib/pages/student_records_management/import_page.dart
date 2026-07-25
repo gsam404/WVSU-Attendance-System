@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import 'package:wvsu_attendance_system/pages/admin_session.dart'; // ← FIX: import session
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class ImportPage extends StatefulWidget {
   const ImportPage({super.key});
@@ -351,7 +352,7 @@ class _ImportPageState extends State<ImportPage> {
     setState(() => isUploading = true);
 
     try {
-      final uri = Uri.parse('http://localhost/libgate_api/upload.php');
+      final uri = Uri.parse(ApiConfig.upload);
       final request = http.MultipartRequest('POST', uri);
 
       // ── FIX: attach the logged-in admin's ID so PHP knows whose data this is ──

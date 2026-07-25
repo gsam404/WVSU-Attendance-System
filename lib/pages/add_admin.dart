@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import './admin_session.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
-const String _apiUrl = "http://localhost/libgate_api/manage_admins.php";
+const String _apiUrl = ApiConfig.manageAdmins;
 
 class ProfilePopUp extends StatelessWidget {
   final Widget child;

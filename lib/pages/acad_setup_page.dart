@@ -6,6 +6,7 @@ import 'package:wvsu_attendance_system/pages/admin_session.dart';
 import '../widgets/academic_dialog.dart';
 import '../utils/validators.dart';
 import '../utils/dialogs.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 // ─── Data Models ────────────────────────────────────────────────────────────
 // ProgramModel & DepartmentModel
@@ -50,7 +51,7 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
   DepartmentModel? _selectedDepartment;
   ProgramModel? _selectedProgram;
 
-  final String apiUrl = 'http://localhost/libgate_api/academic_api.php';
+  final String apiUrl = ApiConfig.academic;
 
   bool _isLoading = true;
 
