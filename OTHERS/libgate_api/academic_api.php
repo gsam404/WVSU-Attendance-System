@@ -250,19 +250,54 @@ try {
     }
 
 // ----- Delete Program -----
-    if ($action === 'delete_program') {
-        $id = intval($_POST['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM programs WHERE id = ? AND campus_id = ?");
-        if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
+  // ----- Delete Program -----
+if ($action === 'delete_program') {
 
-        $stmt->bind_param("ii", $id, $campus_id);
-        if ($stmt->execute()) {
-            echo json_encode(["status" => "success"]);
-        } else {
-            throw new Exception("Execute failed: " . $stmt->error);
-        }
+    $id = intval($_POST['id'] ?? 0);
+
+    // Check if students are assigned to this program
+    $check = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM students
+        WHERE program_id = ?
+    ");
+
+    $check->bind_param("i", $id);
+    $check->execute();
+
+    $result = $check->get_result();
+    $row = $result->fetch_assoc();
+
+    if ($row['total'] > 0) {
+        echo json_encode([
+            "status" => "error",
+            "message" => "Cannot delete this program because students are assigned to it."
+        ]);
         exit();
     }
+
+    // Delete program
+    $stmt = $conn->prepare("
+        DELETE FROM programs 
+        WHERE id = ? AND campus_id = ?
+    ");
+
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("ii", $id, $campus_id);
+
+    if ($stmt->execute()) {
+        echo json_encode([
+            "status" => "success"
+        ]);
+    } else {
+        throw new Exception("Execute failed: " . $stmt->error);
+    }
+
+    exit();
+}
 
   // ----- Update/Edit Department -----
 

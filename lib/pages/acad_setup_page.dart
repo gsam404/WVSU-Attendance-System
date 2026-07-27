@@ -569,6 +569,11 @@ class _AcadSetupPageState extends State<AcadSetupPage> {
           context,
           'Program "${program.code}" deleted successfully.',
         );
+      } else {
+        await DialogUtils.showError(
+          context,
+          data['message'] ?? "Delete failed.",
+        );
       }
     } catch (e) {
       await DialogUtils.showError(
