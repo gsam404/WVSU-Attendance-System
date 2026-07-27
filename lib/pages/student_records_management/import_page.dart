@@ -392,7 +392,10 @@ class _ImportPageState extends State<ImportPage> {
             .map((e) => ImportErrorItem.fromJson(e))
             .toList();
 
-        await _showImportSummary(summary, errors);
+        await _showImportSummary(
+          summary,
+          errors,
+        );
       } else {
         _showSnackBar(
           result['message'] ?? "Server error occurred.",
@@ -484,14 +487,19 @@ class _ImportPageState extends State<ImportPage> {
                           summary.skipped.toString(),
                         ),
                         const Divider(height: 24),
-                        _infoRow("Campus", "-"),
+                        _infoRow(
+                          "Campus",
+                          AdminSession.campusName.isEmpty
+                              ? "NO CAMPUS SAVED"
+                              : AdminSession.campusName,
+                        ),
                         _infoRow(
                           "Imported By",
                           AdminSession.name,
                         ),
                         _infoRow(
                           "Date & Time",
-                          "-",
+                          summary.timestamp,
                         ),
                       ],
                     ),
@@ -1323,20 +1331,32 @@ class ImportSummary {
   final int imported;
   final int updated;
   final int skipped;
+  final int campusId;
+  final int adminId;
+  final String timestamp;
+  final String campusName;
 
   ImportSummary({
     required this.totalRows,
     required this.imported,
     required this.updated,
     required this.skipped,
+    required this.campusId,
+    required this.adminId,
+    required this.timestamp,
+    required this.campusName,
   });
 
   factory ImportSummary.fromJson(Map<String, dynamic> json) {
     return ImportSummary(
-      totalRows: json["total_rows"] ?? 0,
-      imported: json["imported"] ?? 0,
-      updated: json["updated"] ?? 0,
-      skipped: json["skipped"] ?? 0,
+      totalRows: json['total_rows'],
+      imported: json['imported'],
+      updated: json['updated'],
+      skipped: json['skipped'],
+      campusId: json['campus_id'],
+      adminId: json['admin_id'],
+      timestamp: json['timestamp'] ?? "-",
+      campusName: json['campus_name'] ?? "-",
     );
   }
 }

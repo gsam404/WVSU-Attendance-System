@@ -8,6 +8,7 @@ class AdminSession {
   static String role = '';
   static String profilePicUrl = '';
   static int? campusId;
+  static String campusName = '';
 
   /// Set session after login
   static void set({
@@ -17,6 +18,7 @@ class AdminSession {
     required String adminRole,
     required int adminCampusId,
     String picUrl = '',
+    String adminCampusName = '',
   }) {
     id = adminId;
     name = fullName;
@@ -24,6 +26,8 @@ class AdminSession {
     role = adminRole;
     profilePicUrl = picUrl;
     campusId = adminCampusId;
+    campusName = adminCampusName;
+    campusName = '';
   }
 
   /// Clear session on logout
@@ -34,6 +38,7 @@ class AdminSession {
     role = '';
     profilePicUrl = '';
     campusId = null;
+    campusName = '';
   }
 
   /// Check if logged in

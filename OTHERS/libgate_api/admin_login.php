@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 "full_name"   => $row['full_name'],
                 "email"       => $row['email'],
                 "role"        => $row['role'],
-                "campus"      => $row['campus']
+                "campus" => $row['campus']
             ]);
         } else {
             echo json_encode(["success" => false, "message" => "Incorrect password"]);

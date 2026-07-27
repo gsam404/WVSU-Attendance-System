@@ -5,7 +5,6 @@ import 'package:wvsu_attendance_system/pages/dashboard_page.dart';
 import 'package:wvsu_attendance_system/pages/admin_session.dart';
 import 'package:wvsu_attendance_system/config/api_config.dart';
 
-
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
 
@@ -48,6 +47,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         AdminSession.role = data['role'] ?? '';
         AdminSession.email = data['email'] ?? '';
         AdminSession.name = data['full_name'] ?? '';
+        AdminSession.campusName = data['campus'] ?? '';
 
         if (!mounted) return;
         // Remove the public portal route after login so browser back/trackpad
