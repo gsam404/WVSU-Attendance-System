@@ -7,6 +7,7 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import 'package:wvsu_attendance_system/pages/admin_session.dart'; // ← FIX: import session
 import 'package:wvsu_attendance_system/config/api_config.dart';
+import 'package:wvsu_attendance_system/models/import_result.dart';
 
 class ImportPage extends StatefulWidget {
   const ImportPage({super.key});
@@ -79,29 +80,10 @@ class _ImportPageState extends State<ImportPage> {
 
   void _resetUI() {
     setState(() {
-      selectedFileName = null;
-      _csvBytesToUpload = null;
-      recordCount = null;
-      totalRows = 0;
-      validRows = 0;
-      missingFieldCount = 0;
-      duplicateStudentIds = [];
-      missingRequiredColumns = [];
-      missingFieldRows = [];
-      optionalFieldNotices = [];
-      validationMessages = [];
-      importReady = false;
-      isReady = false;
+      _clearImportData();
+
       isUploading = false;
       isProcessingFile = false;
-      detectedFields = [];
-      previewRows = [];
-      _previewSearchController.clear();
-      _previewSearchQuery = '';
-      _studentIdColumnIndex = -1;
-      _previewPage = 0;
-      _missingFieldPage = 0;
-      _duplicatePage = 0;
     });
   }
 
@@ -116,6 +98,36 @@ class _ImportPageState extends State<ImportPage> {
     );
   }
 
+  void _clearImportData() {
+    selectedFileName = null;
+    _csvBytesToUpload = null;
+
+    recordCount = null;
+    totalRows = 0;
+    validRows = 0;
+    missingFieldCount = 0;
+
+    duplicateStudentIds = [];
+    missingRequiredColumns = [];
+    missingFieldRows = [];
+    optionalFieldNotices = [];
+    validationMessages = [];
+
+    isReady = false;
+    importReady = false;
+
+    detectedFields = [];
+    previewRows = [];
+
+    _previewSearchController.clear();
+    _previewSearchQuery = '';
+
+    _studentIdColumnIndex = -1;
+
+    _previewPage = 0;
+    _missingFieldPage = 0;
+    _duplicatePage = 0;
+  }
   // ---------------------------------------------------------------------------
   // FILE PICKING & PARSING
   // Supports CSV and XLSX. XLSX is converted to CSV so the same PHP backend
@@ -126,24 +138,8 @@ class _ImportPageState extends State<ImportPage> {
     if (isProcessingFile) return;
 
     setState(() {
+      _clearImportData();
       isProcessingFile = true;
-      selectedFileName = null;
-      _csvBytesToUpload = null;
-      isReady = false;
-      importReady = false;
-      detectedFields = [];
-      previewRows = [];
-      duplicateStudentIds = [];
-      missingRequiredColumns = [];
-      missingFieldRows = [];
-      optionalFieldNotices = [];
-      validationMessages = [];
-      _previewSearchController.clear();
-      _previewSearchQuery = '';
-      _studentIdColumnIndex = -1;
-      _previewPage = 0;
-      _missingFieldPage = 0;
-      _duplicatePage = 0;
     });
 
     try {
@@ -192,8 +188,15 @@ class _ImportPageState extends State<ImportPage> {
         return;
       }
 
+      final dataRows = rows
+          .skip(1)
+          .where((row) => row.any((cell) => cell.toString().trim().isNotEmpty))
+          .toList(growable: false);
+
+// Continue with header processing...
       final rawHeaders =
           rows.first.map((e) => e.toString().trim()).toList(growable: false);
+
       final lowerHeaders = rawHeaders
           .map((e) => e.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), ' '))
           .toList(growable: false);
@@ -208,7 +211,7 @@ class _ImportPageState extends State<ImportPage> {
           lowerHeaders.indexWhere((header) => header.contains('last'));
       final courseIndex = lowerHeaders.indexWhere((header) =>
           header.contains('course') ||
-          header.contains('department') ||
+          header.contains('degree') ||
           header.contains('program'));
       final yearIndex =
           lowerHeaders.indexWhere((header) => header.contains('year'));
@@ -238,6 +241,11 @@ class _ImportPageState extends State<ImportPage> {
 
       for (var i = 1; i < rows.length; i++) {
         final row = rows[i];
+
+        if (row.every((cell) => cell.toString().trim().isEmpty)) {
+          continue;
+        }
+
         final studentId = studentIdIndex >= 0 && studentIdIndex < row.length
             ? row[studentIdIndex].toString().trim()
             : '';
@@ -318,7 +326,9 @@ class _ImportPageState extends State<ImportPage> {
       setState(() {
         selectedFileName = file.name;
         isReady = true;
-        totalRows = rows.length - 1;
+        previewRows = dataRows;
+        totalRows = dataRows.length;
+        recordCount = dataRows.length;
         validRows = valid;
         missingFieldCount = missingFields;
         duplicateStudentIds = duplicates.toList();
@@ -327,7 +337,7 @@ class _ImportPageState extends State<ImportPage> {
         optionalFieldNotices = optionalNotices;
         validationMessages = summaryMessages;
         importReady = missingHeaders.isEmpty && duplicates.isEmpty;
-        recordCount = totalRows;
+
         _studentIdColumnIndex = studentIdIndex;
         _previewPage = 0;
         _missingFieldPage = 0;
@@ -337,7 +347,7 @@ class _ImportPageState extends State<ImportPage> {
             .toList(growable: false);
         // Keep every data row in the preview, but reuse the parser's row lists
         // instead of creating a second string copy of every cell.
-        previewRows = rows.skip(1).toList(growable: false);
+        //     previewRows = rows.skip(1).toList(growable: false);
       });
     } catch (e) {
       _showSnackBar("Error reading file: $e", Colors.red);
@@ -376,18 +386,337 @@ class _ImportPageState extends State<ImportPage> {
       final result = json.decode(responseBody);
 
       if (streamed.statusCode == 200 && result['status'] == 'success') {
-        _handleSuccess(result['message']);
+        final summary = ImportSummary.fromJson(result["summary"]);
+
+        final errors = (result["errors"] as List)
+            .map((e) => ImportErrorItem.fromJson(e))
+            .toList();
+
+        await _showImportSummary(summary, errors);
       } else {
         _showSnackBar(
-            result['message'] ?? "Server error occurred.", Colors.red);
+          result['message'] ?? "Server error occurred.",
+          Colors.red,
+        );
       }
-    } catch (e) {
-      _showSnackBar(
-          "Connection failed. Check if XAMPP is running.", Colors.red);
+    } catch (e, stackTrace) {
       debugPrint("Upload Error: $e");
+      debugPrint(stackTrace.toString());
+
+      _showSnackBar(
+        "Upload Error: $e",
+        Colors.red,
+      );
     } finally {
       setState(() => isUploading = false);
     }
+  }
+
+  Future<void> _showImportSummary(
+    ImportSummary summary,
+    List<ImportErrorItem> errors,
+  ) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: const EdgeInsets.all(20),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Color(0xFFE8F5E9),
+                    child: Icon(
+                      Icons.check,
+                      color: Colors.green,
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Import Completed Successfully",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Student records have been processed successfully.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _infoRow(
+                          "Total Rows",
+                          summary.totalRows.toString(),
+                        ),
+                        _infoRow(
+                          "Imported",
+                          summary.imported.toString(),
+                        ),
+                        _infoRow(
+                          "Updated",
+                          summary.updated.toString(),
+                        ),
+                        _infoRow(
+                          "Skipped",
+                          summary.skipped.toString(),
+                        ),
+                        const Divider(height: 24),
+                        _infoRow("Campus", "-"),
+                        _infoRow(
+                          "Imported By",
+                          AdminSession.name,
+                        ),
+                        _infoRow(
+                          "Date & Time",
+                          "-",
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: errors.isEmpty
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: errors.isEmpty ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                    child: errors.isEmpty
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(width: 8),
+                              Text(
+                                "No problems found.",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  "${errors.length} issue(s) found during import.",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (errors.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.description),
+                        label: const Text("View Report"),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showImportReport(errors);
+                        },
+                      ),
+                    ),
+                  if (errors.isNotEmpty) const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _resetUI();
+                      },
+                      child: const Text("Close"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(value),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(
+    String label,
+    String value,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryTile(
+    String title,
+    String value,
+    IconData icon, [
+    Color color = Colors.blue,
+  ]) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(.15),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(title),
+        trailing: Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showImportReport(
+    List<ImportErrorItem> errors,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Import Report"),
+          content: SizedBox(
+            width: 550,
+            height: 400,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 24,
+                  headingRowColor: WidgetStateProperty.all(
+                    Colors.grey.shade200,
+                  ),
+                  columns: const [
+                    DataColumn(
+                      label: Text(
+                        "Row",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Field",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Message",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  rows: errors.map((error) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(error.row.toString())),
+                        DataCell(
+                          Text(
+                            error.field
+                                .replaceAll("_", " ")
+                                .split(" ")
+                                .map((word) => word.isEmpty
+                                    ? word
+                                    : word[0].toUpperCase() + word.substring(1))
+                                .join(" "),
+                          ),
+                        ),
+                        DataCell(Text(error.message)),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            )
+          ],
+        );
+      },
+    );
   }
 
   List<List<dynamic>> get _filteredPreviewRows {
@@ -444,7 +773,7 @@ class _ImportPageState extends State<ImportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDropZone(),
-          const SizedBox(height: 25),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -453,10 +782,10 @@ class _ImportPageState extends State<ImportPage> {
               Expanded(child: _buildIncludedFieldsCard()),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 12),
           if (isReady) ...[
             _buildValidationDetailsCard(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 12),
           ],
           _buildPreviewTableCard(),
           const SizedBox(height: 30),
@@ -696,14 +1025,6 @@ class _ImportPageState extends State<ImportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Rows with missing values (${missingFieldRows.length})',
-          style: const TextStyle(
-            color: Color(0xFFB45309),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
         SizedBox(
           height: 620,
           child: Row(
@@ -995,4 +1316,47 @@ class _ImportPageState extends State<ImportPage> {
                       color: Colors.white, fontWeight: FontWeight.bold)),
         )
       ]);
+}
+
+class ImportSummary {
+  final int totalRows;
+  final int imported;
+  final int updated;
+  final int skipped;
+
+  ImportSummary({
+    required this.totalRows,
+    required this.imported,
+    required this.updated,
+    required this.skipped,
+  });
+
+  factory ImportSummary.fromJson(Map<String, dynamic> json) {
+    return ImportSummary(
+      totalRows: json["total_rows"] ?? 0,
+      imported: json["imported"] ?? 0,
+      updated: json["updated"] ?? 0,
+      skipped: json["skipped"] ?? 0,
+    );
+  }
+}
+
+class ImportErrorItem {
+  final int row;
+  final String field;
+  final String message;
+
+  ImportErrorItem({
+    required this.row,
+    required this.field,
+    required this.message,
+  });
+
+  factory ImportErrorItem.fromJson(Map<String, dynamic> json) {
+    return ImportErrorItem(
+      row: json["row"] ?? 0,
+      field: json["field"] ?? "",
+      message: json["message"] ?? "",
+    );
+  }
 }
