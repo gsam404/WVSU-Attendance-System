@@ -2,7 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = 'http://localhost/libgate_api';
+  // Use your local IP address for physical devices/Web
+  // Use 10.0.2.2 for Android Emulator
+  final String baseUrl = kIsWeb
+      ? 'http://10.225.27.211/libgate_api'
+      : Platform.isAndroid
+      ? 'http://10.0.2.2/libgate_api'
+      : 'http://10.225.27.211/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {

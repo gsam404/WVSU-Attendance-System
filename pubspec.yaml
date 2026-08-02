@@ -47,9 +47,9 @@ flutter:
     - assets/analytics.png
     - assets/dashboard.png
     - assets/imageTwo.png
-    - assets/logout.png
+    - assets/logOut.png
     - assets/Rectangle.jpg
-    - assets/useradd.png
+    - assets/userAdd.png
     - assets/import.png
     - assets/acadsetup.png
     # Scanner Audio Files
