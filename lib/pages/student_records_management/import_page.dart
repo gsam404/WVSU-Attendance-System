@@ -550,19 +550,6 @@ class _ImportPageState extends State<ImportPage> {
                           ),
                   ),
                   const SizedBox(height: 20),
-                  if (errors.isNotEmpty)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.description),
-                        label: const Text("View Report"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showImportReport(errors);
-                        },
-                      ),
-                    ),
-                  if (errors.isNotEmpty) const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -1162,96 +1149,79 @@ class _ImportPageState extends State<ImportPage> {
               child: Center(child: Text("No data to preview")),
             )
           else
-            _buildLazyPreviewTable(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildLazyPreviewTable(),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _buildPageArrows(
+                    page: _previewPage,
+                    pageCount: _pageCount(_filteredPreviewRows.length),
+                    onPageChanged: (page) {
+                      setState(() {
+                        _previewPage = page;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
         ]),
       );
 
   Widget _buildLazyPreviewTable() {
     const columnWidth = 180.0;
     const rowHeight = 40.0;
-    const tableHeight = 640.0;
+    const maxRowsPerPage = 15;
 
     final filteredRows = _filteredPreviewRows;
     final pageCount = _pageCount(filteredRows.length);
-
     final currentPage =
         _previewPage >= pageCount ? pageCount - 1 : _previewPage;
 
     final pageRows =
         filteredRows.skip(currentPage * _pageSize).take(_pageSize).toList();
 
+    final visibleRows =
+        pageRows.length > maxRowsPerPage ? maxRowsPerPage : pageRows.length;
+
+// +1 for the header row
+    final tableHeight =
+        ((visibleRows + 1) * rowHeight).clamp(80.0, 640.0).toDouble();
+
     final tableWidth = detectedFields.length * columnWidth;
 
     return SizedBox(
       height: tableHeight,
-      child: Row(
-        children: [
-          Expanded(
-            child: Scrollbar(
-              controller: _previewHorizontalController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _previewHorizontalController,
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableWidth,
-                  child: Column(
-                    children: [
-                      _buildPreviewTableRow(
-                        detectedFields,
-                        width: columnWidth,
-                        height: rowHeight,
-                        isHeader: true,
-                      ),
-                      ...pageRows.map(
-                        (row) => _buildPreviewTableRow(
-                          row,
-                          width: columnWidth,
-                          height: rowHeight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 45,
+      child: Scrollbar(
+        controller: _previewHorizontalController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _previewHorizontalController,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
             child: Column(
               children: [
-                IconButton(
-                  tooltip: "Previous",
-                  onPressed: currentPage > 0
-                      ? () {
-                          setState(() {
-                            _previewPage--;
-                          });
-                        }
-                      : null,
-                  icon: const Icon(Icons.keyboard_arrow_up),
+                _buildPreviewTableRow(
+                  detectedFields,
+                  width: columnWidth,
+                  height: rowHeight,
+                  isHeader: true,
                 ),
-                const Spacer(),
-                Text(
-                  "${currentPage + 1}/$pageCount",
-                  style: const TextStyle(fontSize: 11),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: "Next",
-                  onPressed: currentPage < pageCount - 1
-                      ? () {
-                          setState(() {
-                            _previewPage++;
-                          });
-                        }
-                      : null,
-                  icon: const Icon(Icons.keyboard_arrow_down),
+                ...pageRows.map(
+                  (row) => _buildPreviewTableRow(
+                    row,
+                    width: columnWidth,
+                    height: rowHeight,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
