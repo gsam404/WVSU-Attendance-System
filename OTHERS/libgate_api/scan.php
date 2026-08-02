@@ -21,45 +21,58 @@ if (empty($scanned_id)) {
 
 $current_time = date("H:i:s");
 $current_date = date("Y-m-d");
-
+$school_year_id = null;
 
 try {
     $conn->query("SET time_zone = '+08:00'");
+
+    $sy_stmt = $conn->prepare("SELECT id FROM school_years WHERE ? BETWEEN start_date AND end_date LIMIT 1");
+    if ($sy_stmt) {
+        $sy_stmt->bind_param("s", $current_date);
+        $sy_stmt->execute();
+        $sy_res = $sy_stmt->get_result();
+        if ($sy_res && $sy_row = $sy_res->fetch_assoc()) {
+            $school_year_id = intval($sy_row['id']);
+        }
+        $sy_stmt->close();
+    }
 
     // 1. AUTO-LOGOUT LOGIC
     if ($admin_id > 0) {
         // Scoped to this admin only
         $conn->query("UPDATE entry_logs 
-                      SET Time_Out = '18:00:00', 
-                          Status = 'Auto-Logged-Out',
-                          Time_Spent = TIMEDIFF('18:00:00', Time_In)
+                      SET time_out = '18:00:00', 
+                          status = 'Auto-Logged-Out',
+                          time_spent = TIMEDIFF('18:00:00', time_in)
                       WHERE admin_id = $admin_id
-                        AND Time_Out IS NULL 
-                        AND (Scan_Date < CURDATE() OR (Scan_Date = CURDATE() AND CURTIME() > '18:00:00'))");
+                        AND time_out IS NULL 
+                        AND (scan_date < CURDATE() OR (scan_date = CURDATE() AND CURTIME() > '18:00:00'))");
     } else {
         // No admin scope — apply to all
         $conn->query("UPDATE entry_logs 
-                      SET Time_Out = '18:00:00', 
-                          Status = 'Auto-Logged-Out',
-                          Time_Spent = TIMEDIFF('18:00:00', Time_In)
-                      WHERE Time_Out IS NULL 
-                        AND (Scan_Date < CURDATE() OR (Scan_Date = CURDATE() AND CURTIME() > '18:00:00'))");
+                      SET time_out = '18:00:00', 
+                          status = 'Auto-Logged-Out',
+                          time_spent = TIMEDIFF('18:00:00', time_in)
+                      WHERE time_out IS NULL 
+                        AND (scan_date < CURDATE() OR (scan_date = CURDATE() AND CURTIME() > '18:00:00'))");
     }
 
     // 2. GET STUDENT INFO
     if ($admin_id > 0) {
         // Scoped: only students belonging to this admin
-        $stmt = $conn->prepare("SELECT Student_Number, First_Name, Last_Name, Program, admin_id
-                                FROM students 
-                                WHERE TRIM(Student_Number) = ? AND admin_id = ? 
+        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, COALESCE(p.code, 'No Program') AS program, s.admin_id
+                                FROM students s
+                                LEFT JOIN programs p ON s.program_id = p.id
+                                WHERE TRIM(s.student_number) = ? AND s.admin_id = ?
                                 LIMIT 1");
         if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         $stmt->bind_param("si", $scanned_id, $admin_id);
     } else {
         // No admin scope — search all students
-        $stmt = $conn->prepare("SELECT Student_Number, First_Name, Last_Name, Program, admin_id
-                                FROM students 
-                                WHERE TRIM(Student_Number) = ? 
+        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, COALESCE(p.code, 'No Program') AS program, s.admin_id
+                                FROM students s
+                                LEFT JOIN programs p ON s.program_id = p.id
+                                WHERE TRIM(s.student_number) = ?
                                 LIMIT 1");
         if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         $stmt->bind_param("s", $scanned_id);
@@ -74,15 +87,16 @@ try {
     }
 
     $student        = $student_res->fetch_assoc();
-    $s_id           = $student['Student_Number'];
-    $full_name      = $student['First_Name'] . " " . $student['Last_Name'];
-    $program        = $student['Program'] ?? 'No Program';
+    $s_id           = $student['student_number'];
+    $full_name      = $student['first_name'] . " " . $student['last_name'];
+    $program        = $student['program'] ?? 'No Program';
     $resolved_admin = $student['admin_id']; // Use the student's own admin_id for logs
 
+
     // 3. CHECK FOR OPEN SESSION
-    $check_stmt = $conn->prepare("SELECT Log_ID, Time_In FROM entry_logs 
-                                  WHERE Student_Number = ? AND admin_id = ?
-                                    AND Scan_Date = CURDATE() AND Time_Out IS NULL 
+    $check_stmt = $conn->prepare("SELECT log_id, time_in FROM entry_logs 
+                                  WHERE student_number = ? AND admin_id = ?
+                                    AND scan_date = CURDATE() AND time_out IS NULL 
                                   LIMIT 1");
     if (!$check_stmt) throw new Exception("Prepare failed: " . $conn->error);
 
@@ -92,8 +106,8 @@ try {
 
     if ($open_log) {
         // --- ACTION: LOG OUT ---
-        $log_id = $open_log['Log_ID'];
-        $t_in   = $open_log['Time_In'];
+        $log_id = $open_log['log_id'];
+        $t_in   = $open_log['time_in'];
 
         $start      = new DateTime($t_in);
         $end        = new DateTime($current_time);
@@ -101,8 +115,8 @@ try {
         $time_spent = $diff->format('%H:%I:%S');
 
         $upd = $conn->prepare("UPDATE entry_logs 
-                               SET Time_Out = ?, Time_Spent = ?, Status = 'Completed' 
-                               WHERE Log_ID = ? AND admin_id = ?");
+                               SET time_out = ?, time_spent = ?, status = 'Completed' 
+                               WHERE log_id = ? AND admin_id = ?");
         if (!$upd) throw new Exception("Prepare failed: " . $conn->error);
 
         $upd->bind_param("ssii", $current_time, $time_spent, $log_id, $resolved_admin);
@@ -120,11 +134,17 @@ try {
         }
     } else {
         // --- ACTION: LOG IN ---
-        $ins = $conn->prepare("INSERT INTO entry_logs (admin_id, Student_Number, Scan_Date, Time_In, Status) 
-                               VALUES (?, ?, ?, ?, 'Active')");
-        if (!$ins) throw new Exception("Prepare failed: " . $conn->error);
-
-        $ins->bind_param("isss", $resolved_admin, $s_id, $current_date, $current_time);
+        if ($school_year_id !== null) {
+            $ins = $conn->prepare("INSERT INTO entry_logs (admin_id, student_number, scan_date, time_in, status, school_year_id) 
+                                   VALUES (?, ?, ?, ?, 'Active', ?)");
+            if (!$ins) throw new Exception("Prepare failed: " . $conn->error);
+            $ins->bind_param("isssi", $resolved_admin, $s_id, $current_date, $current_time, $school_year_id);
+        } else {
+            $ins = $conn->prepare("INSERT INTO entry_logs (admin_id, student_number, scan_date, time_in, status) 
+                                   VALUES (?, ?, ?, ?, 'Active')");
+            if (!$ins) throw new Exception("Prepare failed: " . $conn->error);
+            $ins->bind_param("isss", $resolved_admin, $s_id, $current_date, $current_time);
+        }
 
         if ($ins->execute()) {
             echo json_encode([

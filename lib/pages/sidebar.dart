@@ -2,13 +2,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import './attendancepage.dart';
-import './analyticspage.dart';
-import './addAdmin.dart';
-import './importpage.dart';
-import './dashboardPage.dart';
-import './acadsetuppage.dart';
-import './adminSession.dart';
+import './attendance_page.dart';
+import './analytics_page.dart';
+import './add_admin.dart';
+import './student_records_management/student_records_management_page.dart';
+import './dashboard_page.dart';
+import './acad_setup_page.dart';
+import './admin_session.dart';
+import 'package:wvsu_attendance_system/permissions/permissions.dart';
+import 'package:wvsu_attendance_system/pages/access_denied_dialog.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
 class SideBar extends StatefulWidget {
   final int selectedIndex;
@@ -27,27 +30,29 @@ class _SideBarState extends State<SideBar> {
     {
       'icon': 'assets/dashboard.png',
       'title': 'Dashboard',
-      'page': const DashboardPage()
+      'page': const DashboardPage(),
     },
     {
       'icon': 'assets/analytics.png',
       'title': 'Analytics',
-      'page': const AnalyticsPage()
+      'page': const AnalyticsPage(),
     },
     {
       'icon': 'assets/attendance.png',
       'title': 'Attendance',
-      'page': const AttendancePage()
+      'page': const AttendancePage(),
     },
     {
       'icon': 'assets/acadsetup.png',
       'title': 'Academic Setup',
-      'page': const AcadSetupPage()
+      'page': const AcadSetupPage(),
+      'permission': Permissions.canManageAcademicSetup,
     },
     {
       'icon': 'assets/import.png',
-      'title': 'Import',
-      'page': const ImportPage()
+      'title': 'Student Records',
+      'page': const StudentRecordsManagementPage(),
+      'permission': Permissions.canManageStudents,
     },
   ];
 
@@ -73,9 +78,8 @@ class _SideBarState extends State<SideBar> {
 
   Widget _buildAvatar(double radius) {
     final String picUrl = AdminSession.profilePicUrl;
-    final String initial = AdminSession.name.isNotEmpty
-        ? AdminSession.name[0].toUpperCase()
-        : "A";
+    final String initial =
+        AdminSession.name.isNotEmpty ? AdminSession.name[0].toUpperCase() : "A";
 
     if (picUrl.isNotEmpty) {
       return CircleAvatar(
@@ -108,8 +112,7 @@ class _SideBarState extends State<SideBar> {
     final RelativeRect position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(
-            button.size.bottomRight(Offset.zero),
+        button.localToGlobal(button.size.bottomRight(Offset.zero),
             ancestor: overlay),
       ),
       Offset.zero & overlay.size,
@@ -169,8 +172,7 @@ class _SideBarState extends State<SideBar> {
 
             if (newPass != confirmPass) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('New passwords do not match.')),
+                const SnackBar(content: Text('New passwords do not match.')),
               );
               return;
             }
@@ -178,8 +180,7 @@ class _SideBarState extends State<SideBar> {
             if (newPass.length < 6) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content:
-                        Text('Password must be at least 6 characters.')),
+                    content: Text('Password must be at least 6 characters.')),
               );
               return;
             }
@@ -188,8 +189,7 @@ class _SideBarState extends State<SideBar> {
 
             try {
               final response = await http.post(
-                Uri.parse(
-                    'http://localhost/libgate_api/change_password.php'),
+                Uri.parse(ApiConfig.changePassword),
                 body: {
                   'id': AdminSession.id.toString(),
                   'old_password': oldPass,
@@ -204,9 +204,8 @@ class _SideBarState extends State<SideBar> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(data['message'] ?? 'Done'),
-                    backgroundColor: data['success'] == true
-                        ? Colors.green
-                        : Colors.red,
+                    backgroundColor:
+                        data['success'] == true ? Colors.green : Colors.red,
                   ),
                 );
               }
@@ -341,7 +340,7 @@ class _SideBarState extends State<SideBar> {
         ),
         child: Column(
           children: [
-            Expanded(
+            Flexible(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: <Widget>[
@@ -354,7 +353,7 @@ class _SideBarState extends State<SideBar> {
                             width: 75, height: 75),
                         if (isFullyExpanded)
                           const Text(
-                            'WVSU LIBRARY ATTENDANCE',
+                            'WVSU Library Attendance',
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.white,
@@ -375,9 +374,7 @@ class _SideBarState extends State<SideBar> {
                         backgroundColor:
                             const Color.fromARGB(255, 30, 100, 190),
                         child: Icon(
-                          isExpanded
-                              ? Icons.chevron_left
-                              : Icons.chevron_right,
+                          isExpanded ? Icons.chevron_left : Icons.chevron_right,
                           color: Colors.white,
                         ),
                       ),
@@ -394,6 +391,14 @@ class _SideBarState extends State<SideBar> {
                       isSelected: selectedIndex == index,
                       isExpanded: isFullyExpanded,
                       onTap: () {
+                        // Setting Permissions
+                        final permission = item['permission'];
+
+                        if (permission != null && permission == false) {
+                          AccessDeniedDialog.show(context);
+                          return;
+                        }
+
                         setState(() => selectedIndex = index);
                         Navigator.pushReplacement(
                           context,
@@ -449,8 +454,7 @@ class _SideBarState extends State<SideBar> {
                             icon: const Icon(Icons.more_vert,
                                 color: Colors.white70, size: 20),
                             tooltip: 'Options',
-                            onPressed: () =>
-                                _showOptionsMenu(menuContext),
+                            onPressed: () => _showOptionsMenu(menuContext),
                           ),
                         ),
                       ],
@@ -548,8 +552,7 @@ class SideBarItems extends StatelessWidget {
             : null,
         child: isExpanded
             ? ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0),
                 leading: SizedBox(
                   width: 32,
                   height: 32,

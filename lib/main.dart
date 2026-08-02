@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'pages/adminLoginPage.dart';
-import 'dart:async'; //
-import 'package:audioplayers/audioplayers.dart'; // ADDED: Audio package import
+import 'pages/attendance_portal_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -49,6 +46,7 @@ class NoTransitionPageTransitionsBuilder extends PageTransitionsBuilder {
 /* ---------------------------------------------------------
                             MyApp 
 ------------------------------------------------------------*/
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -56,7 +54,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'WVSU Library Attendance',
+      title: 'WVSU  Library Attendance',
       theme: ThemeData(
         fontFamily: 'Inter',
         useMaterial3: true,
@@ -71,7 +69,7 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      // Set the initial page to the AttendancePortal (the choice screen)
+      // Initial page to the Student-Admin Portal
       home: const AttendancePortal(),
     );
   } // Widget build

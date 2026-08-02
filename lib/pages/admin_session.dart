@@ -7,6 +7,8 @@ class AdminSession {
   static String email = '';
   static String role = '';
   static String profilePicUrl = '';
+  static int? campusId;
+  static String campusName = '';
 
   /// Set session after login
   static void set({
@@ -14,13 +16,18 @@ class AdminSession {
     required String fullName,
     required String adminEmail,
     required String adminRole,
+    required int adminCampusId,
     String picUrl = '',
+    String adminCampusName = '',
   }) {
     id = adminId;
     name = fullName;
     email = adminEmail;
     role = adminRole;
     profilePicUrl = picUrl;
+    campusId = adminCampusId;
+    campusName = adminCampusName;
+    campusName = '';
   }
 
   /// Clear session on logout
@@ -30,11 +37,17 @@ class AdminSession {
     email = '';
     role = '';
     profilePicUrl = '';
+    campusId = null;
+    campusName = '';
   }
 
   /// Check if logged in
   static bool get isLoggedIn => id.isNotEmpty;
 
-  /// Role check
+  /// Role checks
   static bool get isMainAdmin => role == 'main_admin';
+
+  static bool get isCampusAdmin => role == 'campus_admin';
+
+  static bool get isLibraryStaff => role == 'librarian_staff';
 }

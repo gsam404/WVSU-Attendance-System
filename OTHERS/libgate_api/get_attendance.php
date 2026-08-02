@@ -22,26 +22,26 @@ try {
     $month = $_GET['month'] ?? null;
     $department = $_GET['department'] ?? null;
     $program = $_GET['program'] ?? null;
-    
-    // 1. THE CHEF NOW ACCEPTS THE SCHOOL YEAR REQUEST
-    $school_year = $_GET['school_year'] ?? null; 
+    $school_year_id = intval($_GET['school_year_id'] ?? 0);
+    $school_year = trim($_GET['school_year'] ?? '');
 
     // ===============================
     // BASE QUERY
     // ===============================
     $query = "SELECT 
-                l.Scan_Date as date, 
-                DATE_FORMAT(l.Time_In, '%h:%i %p') as signIn,
-                l.Time_Out as signOut, 
-                CONCAT(s.First_Name, ' ', s.Last_Name) as name, 
-                s.Student_Number as studentId, 
-                s.Year_Level as year, 
+                l.scan_date as date, 
+                DATE_FORMAT(l.time_in, '%h:%i %p') as signIn,
+                l.time_out as signOut, 
+                CONCAT(s.first_name, ' ', s.last_name) as name, 
+                s.student_number as studentId, 
+                s.year_level as year, 
                 p.code as course, 
                 d.code as department 
               FROM entry_logs l
-              JOIN students s ON l.Student_Number = s.Student_Number
-              LEFT JOIN programs p ON s.Program = p.code
+              JOIN students s ON l.student_number = s.student_number
+              LEFT JOIN programs p ON s.program_id = p.id
               LEFT JOIN departments d ON p.department_id = d.id
+              LEFT JOIN school_years sy ON l.school_year_id = sy.id
               WHERE 1=1";
 
     // ===============================
@@ -49,21 +49,28 @@ try {
     // ===============================
     
     // 2. THE CHEF CALCULATES THE SCHOOL YEAR (Aug 1 to July 31)
-    if ($school_year) {
-        $years = explode("-", $school_year);
-        if (count($years) == 2) {
-            $start_date = $years[0] . "-08-01";
-            $end_date = $years[1] . "-07-31";
-            $query .= " AND DATE(l.Scan_Date) >= '$start_date' AND DATE(l.Scan_Date) <= '$end_date'";
+    if ($school_year_id > 0) {
+        $query .= " AND l.school_year_id = $school_year_id";
+    } elseif ($school_year && $school_year !== 'All Years') {
+        if (preg_match('/^\d{4}-\d{4}$/', $school_year)) {
+            $years = explode("-", $school_year);
+            if (count($years) == 2) {
+                $start_date = $years[0] . "-08-01";
+                $end_date = $years[1] . "-07-31";
+                $query .= " AND DATE(l.scan_date) >= '$start_date' AND DATE(l.scan_date) <= '$end_date'";
+            }
+        } else {
+            $school_year_safe = $conn->real_escape_string($school_year);
+            $query      .= " AND sy.name = '$school_year_safe'";
         }
     }
 
-    if ($date && !$school_year && !$month) { // Only use exact date if SY or Month aren't selected
-        $query .= " AND DATE(l.Scan_Date) = '$date'";
+    if ($date && !$school_year && !$month && $school_year_id === 0) { // Only use exact date if SY or Month aren't selected
+        $query .= " AND DATE(l.scan_date) = '$date'";
     }
 
     if ($month && !$school_year) {
-        $query .= " AND MONTH(l.Scan_Date) = '$month'";
+        $query .= " AND MONTH(l.scan_date) = '$month'";
     }
 
     if ($department && $department !== 'All Departments') {
@@ -71,10 +78,11 @@ try {
     }
 
     if ($program && $program !== 'All Programs') {
-        $query .= " AND p.code = '$program'";
+        $program_safe = $conn->real_escape_string($program);
+        $query .= " AND p.code = '$program_safe'";
     }
 
-    $query .= " ORDER BY l.Scan_Date DESC, l.Time_In DESC";
+    $query .= " ORDER BY l.scan_date DESC, l.time_in DESC";
 
     $result = $conn->query($query);
 

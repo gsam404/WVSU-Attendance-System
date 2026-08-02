@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import './adminSession.dart';
+import './admin_session.dart';
+import 'package:wvsu_attendance_system/config/api_config.dart';
 
-const String _apiUrl = "http://localhost/libgate_api/manage_admins.php";
+const String _apiUrl = ApiConfig.manageAdmins;
 
 class ProfilePopUp extends StatelessWidget {
   final Widget child;
@@ -50,23 +51,23 @@ class ProfilePopUp extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                  radius: 24,
-                  backgroundColor: const Color(0xFF1B36C2),
-                  backgroundImage: AdminSession.profilePicUrl.isNotEmpty
-                      ? NetworkImage(AdminSession.profilePicUrl)
-                      : null,
-                  child: AdminSession.profilePicUrl.isEmpty
-                      ? Text(
-                          AdminSession.name.isNotEmpty
-                              ? AdminSession.name[0].toUpperCase()
-                              : "A",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      : null,
-                ),
+                radius: 24,
+                backgroundColor: const Color(0xFF1B36C2),
+                backgroundImage: AdminSession.profilePicUrl.isNotEmpty
+                    ? NetworkImage(AdminSession.profilePicUrl)
+                    : null,
+                child: AdminSession.profilePicUrl.isEmpty
+                    ? Text(
+                        AdminSession.name.isNotEmpty
+                            ? AdminSession.name[0].toUpperCase()
+                            : "A",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +312,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   setState(() => _admins.removeWhere((a) => a['id'] == id));
                   _showSnack("Administrator removed.");
                 } else {
-                  _showSnack(data['message'] ?? 'Delete failed.', isError: true);
+                  _showSnack(data['message'] ?? 'Delete failed.',
+                      isError: true);
                 }
               } catch (e) {
                 _showSnack("Network error: $e", isError: true);
@@ -333,7 +335,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     if (actualIndex == -1) return;
 
     final nameCtrl = TextEditingController(text: _admins[actualIndex]['name']);
-    final emailCtrl = TextEditingController(text: _admins[actualIndex]['email']);
+    final emailCtrl =
+        TextEditingController(text: _admins[actualIndex]['email']);
     String? editSelectedCampus = _admins[actualIndex]['campus'];
 
     showDialog(
@@ -353,7 +356,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                   children: [
                     TextField(
                         controller: nameCtrl,
-                        decoration: const InputDecoration(labelText: "Full Name")),
+                        decoration:
+                            const InputDecoration(labelText: "Full Name")),
                     const SizedBox(height: 15),
                     TextField(
                         controller: emailCtrl,
@@ -361,9 +365,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             labelText: "Email", errorText: dEmailErr)),
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
-                      value: editSelectedCampus,
+                      initialValue: editSelectedCampus,
                       items: _campuses
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
                       onChanged: (val) =>
                           setInnerState(() => editSelectedCampus = val),
@@ -378,40 +383,38 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                     onPressed: () => Navigator.pop(context),
                     child: const Text("Cancel")),
                 ElevatedButton(
-                  onPressed: dialogLoading
-                      ? () {}
-                      : () async {
-                          setInnerState(() => dialogLoading = true);
-                          try {
-                            final response = await http.post(
-                              Uri.parse(_apiUrl),
-                              body: {
-                                'action': 'update',
-                                'requester_role': AdminSession.role,
-                                'id': admin['id']!,
-                                'full_name': nameCtrl.text.trim(),
-                                'email': emailCtrl.text.trim(),
-                                'campus': editSelectedCampus!,
-                              },
-                            );
-                            final data = json.decode(response.body);
-                            if (data['status'] == 'success') {
-                              setState(() {
-                                _admins[actualIndex]['name'] = nameCtrl.text.trim();
-                                _admins[actualIndex]['email'] = emailCtrl.text.trim();
-                                _admins[actualIndex]['campus'] = editSelectedCampus!;
-                              });
-                              Navigator.pop(context);
-                              _showSnack("Updated successfully!");
-                            } else {
-                              _showSnack(data['message'], isError: true);
-                            }
-                          } catch (e) {
-                            _showSnack("Error: $e", isError: true);
-                          } finally {
-                            setInnerState(() => dialogLoading = false);
-                          }
+                  onPressed: () async {
+                    setInnerState(() => dialogLoading = true);
+                    try {
+                      final response = await http.post(
+                        Uri.parse(_apiUrl),
+                        body: {
+                          'action': 'update',
+                          'requester_role': AdminSession.role,
+                          'id': admin['id']!,
+                          'full_name': nameCtrl.text.trim(),
+                          'email': emailCtrl.text.trim(),
+                          'campus': editSelectedCampus!,
                         },
+                      );
+                      final data = json.decode(response.body);
+                      if (data['status'] == 'success') {
+                        setState(() {
+                          _admins[actualIndex]['name'] = nameCtrl.text.trim();
+                          _admins[actualIndex]['email'] = emailCtrl.text.trim();
+                          _admins[actualIndex]['campus'] = editSelectedCampus!;
+                        });
+                        Navigator.pop(context);
+                        _showSnack("Updated successfully!");
+                      } else {
+                        _showSnack(data['message'], isError: true);
+                      }
+                    } catch (e) {
+                      _showSnack("Error: $e", isError: true);
+                    } finally {
+                      setInnerState(() => dialogLoading = false);
+                    }
+                  },
                   child: const Text("Update"),
                 ),
               ],
@@ -434,9 +437,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   }
 
   List<Map<String, String>> get _filteredAdmins => _admins
-      .where((admin) => admin['name']!
-          .toLowerCase()
-          .contains(_searchQuery.toLowerCase()))
+      .where((admin) =>
+          admin['name']!.toLowerCase().contains(_searchQuery.toLowerCase()))
       .toList();
 
   @override
@@ -493,7 +495,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                         "Add new admins, manage existing roles, transfer system ownership.",
                         style: TextStyle(color: Colors.white, fontSize: 20)),
                     const SizedBox(height: 25),
-                    
+
                     // CARD: ADD ADMIN
                     _buildCard(
                       title: "Add New University Librarian",
@@ -512,8 +514,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildTextField("Email Address", "name@wvsu.edu.ph",
-                                  _emailController,
+                              _buildTextField("Email Address",
+                                  "name@wvsu.edu.ph", _emailController,
                                   errorText: _emailError),
                               const SizedBox(width: 20),
                               Expanded(
@@ -525,7 +527,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                             fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 8),
                                     DropdownButtonFormField<String>(
-                                      value: _selectedCampus,
+                                      initialValue: _selectedCampus,
                                       decoration: _inputDecoration(
                                           "e.g. Calinog Campus",
                                           errorText: _campusError),
@@ -533,8 +535,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                           .map((c) => DropdownMenuItem(
                                               value: c, child: Text(c)))
                                           .toList(),
-                                      onChanged: (val) => setState(
-                                          () => _selectedCampus = val),
+                                      onChanged: (val) =>
+                                          setState(() => _selectedCampus = val),
                                     ),
                                   ],
                                 ),
@@ -555,14 +557,15 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                     horizontal: 24, vertical: 18),
                               ),
                               child: const Text("Add Administrator",
-                                  style: TextStyle(fontWeight: FontWeight.bold)),
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // CARD: ADMIN LIST
                     _buildCard(
                       title: "University Librarians List",
@@ -576,7 +579,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                             borderRadius: BorderRadius.circular(20)),
                         child: Row(
                           children: [
-                            const Icon(Icons.search, size: 20, color: Colors.blueGrey),
+                            const Icon(Icons.search,
+                                size: 20, color: Colors.blueGrey),
                             const SizedBox(width: 8),
                             Expanded(
                               child: TextField(
@@ -597,28 +601,47 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                           const SizedBox(height: 15),
                           const Row(
                             children: [
-                              Expanded(flex: 4, child: Text("User Profile", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-                              Expanded(flex: 3, child: Text("Campus Assigned", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
-                              Expanded(flex: 2, child: Text("Actions", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                              Expanded(
+                                  flex: 4,
+                                  child: Text("User Profile",
+                                      style: TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold))),
+                              Expanded(
+                                  flex: 3,
+                                  child: Text("Campus Assigned",
+                                      style: TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold))),
+                              Expanded(
+                                  flex: 2,
+                                  child: Text("Actions",
+                                      style: TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold))),
                             ],
                           ),
                           const Divider(height: 25),
                           if (filteredAdmins.isEmpty && !_isLoading)
                             const Padding(
                               padding: EdgeInsets.all(40),
-                              child: Text("No administrators found.", style: TextStyle(color: Colors.grey)),
+                              child: Text("No administrators found.",
+                                  style: TextStyle(color: Colors.grey)),
                             )
                           else
                             ListView.separated(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: filteredAdmins.length,
-                              separatorBuilder: (context, index) => const Divider(),
+                              separatorBuilder: (context, index) =>
+                                  const Divider(),
                               itemBuilder: (context, index) {
                                 final admin = filteredAdmins[index];
-                                final colorIdx = int.parse(admin['colorIndex'] ?? "0");
+                                final colorIdx =
+                                    int.parse(admin['colorIndex'] ?? "0");
                                 return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10.0),
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -627,29 +650,63 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
                                           children: [
                                             CircleAvatar(
                                               radius: 20,
-                                              backgroundColor: _avatarColors[colorIdx % _avatarColors.length],
-                                              child: Text(admin['name']![0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                              backgroundColor: _avatarColors[
+                                                  colorIdx %
+                                                      _avatarColors.length],
+                                              child: Text(admin['name']![0],
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
                                             ),
                                             const SizedBox(width: 12),
                                             Flexible(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(admin['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                                  Text(admin['email']!, style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 12, decoration: TextDecoration.underline)),
+                                                  Text(admin['name']!,
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14)),
+                                                  Text(admin['email']!,
+                                                      style: const TextStyle(
+                                                          color:
+                                                              Color(0xFF3B82F6),
+                                                          fontSize: 12,
+                                                          decoration:
+                                                              TextDecoration
+                                                                  .underline)),
                                                 ],
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      Expanded(flex: 3, child: Text(admin['campus']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                                      Expanded(
+                                          flex: 3,
+                                          child: Text(admin['campus']!,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14))),
                                       Expanded(
                                         flex: 2,
                                         child: Row(
                                           children: [
-                                            IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.grey), onPressed: () => _showEditDialog(index)),
-                                            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _confirmDelete(admin['id']!, admin['name']!)),
+                                            IconButton(
+                                                icon: const Icon(
+                                                    Icons.edit_outlined,
+                                                    color: Colors.grey),
+                                                onPressed: () =>
+                                                    _showEditDialog(index)),
+                                            IconButton(
+                                                icon: const Icon(
+                                                    Icons.delete_outline,
+                                                    color: Colors.red),
+                                                onPressed: () => _confirmDelete(
+                                                    admin['id']!,
+                                                    admin['name']!)),
                                           ],
                                         ),
                                       ),
@@ -672,11 +729,20 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
   }
 
   // --- UI HELPERS ---
-  Widget _buildCard({required String title, required Widget child, String? subtitle, Widget? headerWidget}) {
+  Widget _buildCard(
+      {required String title,
+      required Widget child,
+      String? subtitle,
+      Widget? headerWidget}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)]),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
+          ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -686,8 +752,13 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  if (subtitle != null) Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold)),
+                  if (subtitle != null)
+                    Text(subtitle,
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 14)),
                 ],
               ),
               if (headerWidget != null) headerWidget,
@@ -700,7 +771,9 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
     );
   }
 
-  Widget _buildTextField(String label, String hint, TextEditingController controller, {String? errorText}) {
+  Widget _buildTextField(
+      String label, String hint, TextEditingController controller,
+      {String? errorText}) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +795,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen> {
       errorText: errorText,
       filled: true,
       fillColor: const Color(0xFFF3F4F6),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }

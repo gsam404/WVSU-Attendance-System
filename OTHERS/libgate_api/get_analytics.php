@@ -30,11 +30,11 @@ $monthly = array_fill(0, 12, 0);
 
 // ── 1. Weekly chart ──────────────────────────────────────────────────────────
 $weekly_query = "
-    SELECT DAYOFWEEK(Scan_Date) AS day_num, COUNT(*) AS cnt
+    SELECT DAYOFWEEK(scan_date) AS day_num, COUNT(*) AS cnt
     FROM entry_logs
     WHERE admin_id = $admin_id
-      AND YEARWEEK(Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
-    GROUP BY DAYOFWEEK(Scan_Date)";
+      AND YEARWEEK(scan_date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY DAYOFWEEK(scan_date)";
 $res = mysqli_query($conn, $weekly_query);
 if ($res) {
     while ($row = mysqli_fetch_assoc($res)) {
@@ -45,11 +45,11 @@ if ($res) {
 
 // ── 2. Monthly chart ─────────────────────────────────────────────────────────
 $monthly_query = "
-    SELECT MONTH(Scan_Date) AS month_num, COUNT(*) AS cnt
+    SELECT MONTH(scan_date) AS month_num, COUNT(*) AS cnt
     FROM entry_logs
     WHERE admin_id = $admin_id
-      AND YEAR(Scan_Date) = YEAR(CURDATE())
-    GROUP BY MONTH(Scan_Date)";
+      AND YEAR(scan_date) = YEAR(CURDATE())
+    GROUP BY MONTH(scan_date)";
 $res = mysqli_query($conn, $monthly_query);
 if ($res) {
     while ($row = mysqli_fetch_assoc($res)) {
@@ -62,31 +62,31 @@ if ($res) {
 $weeklyPeakDay = $weeklyTopDepartment = $weeklyTopCourse = "None";
 
 $res = mysqli_query($conn, "
-    SELECT DAYNAME(Scan_Date) AS v, COUNT(*) AS cnt
+    SELECT DAYNAME(scan_date) AS v, COUNT(*) AS cnt
     FROM entry_logs
     WHERE admin_id = $admin_id
-      AND YEARWEEK(Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
-    GROUP BY DAYNAME(Scan_Date) ORDER BY cnt DESC LIMIT 1");
+      AND YEARWEEK(scan_date, 0) = YEARWEEK(CURDATE(), 0)
+    GROUP BY DAYNAME(scan_date) ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $weeklyPeakDay = $row['v'];
 
 $res = mysqli_query($conn, "
-    SELECT d.code AS v, COUNT(l.Log_ID) AS cnt
+    SELECT d.code AS v, COUNT(l.log_id) AS cnt
     FROM entry_logs l
-    JOIN students s ON l.Student_Number = s.Student_Number
-    JOIN programs p ON s.Program = p.code
+    JOIN students s ON l.student_number = s.student_number
+    JOIN programs p ON s.program_id = p.id
     JOIN departments d ON p.department_id = d.id
     WHERE l.admin_id = $admin_id
-      AND YEARWEEK(l.Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+      AND YEARWEEK(l.scan_date, 0) = YEARWEEK(CURDATE(), 0)
     GROUP BY d.id ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $weeklyTopDepartment = $row['v'] ?? "None";
 
 $res = mysqli_query($conn, "
-    SELECT p.code AS v, COUNT(l.Log_ID) AS cnt
+    SELECT p.code AS v, COUNT(l.log_id) AS cnt
     FROM entry_logs l
-    JOIN students s ON l.Student_Number = s.Student_Number
-    JOIN programs p ON s.Program = p.code
+    JOIN students s ON l.student_number = s.student_number
+    JOIN programs p ON s.program_id = p.id
     WHERE l.admin_id = $admin_id
-      AND YEARWEEK(l.Scan_Date, 0) = YEARWEEK(CURDATE(), 0)
+      AND YEARWEEK(l.scan_date, 0) = YEARWEEK(CURDATE(), 0)
     GROUP BY p.id ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $weeklyTopCourse = $row['v'] ?? "None";
 
@@ -94,32 +94,32 @@ if ($res && $row = mysqli_fetch_assoc($res)) $weeklyTopCourse = $row['v'] ?? "No
 $monthlyPeakMonth = $monthlyTopDepartment = $monthlyTopCourse = "None";
 
 $res = mysqli_query($conn, "
-    SELECT MONTHNAME(Scan_Date) AS v, COUNT(*) AS cnt
+    SELECT MONTHNAME(scan_date) AS v, COUNT(*) AS cnt
     FROM entry_logs
     WHERE admin_id = $admin_id
-      AND YEAR(Scan_Date) = YEAR(CURDATE())
-    GROUP BY MONTH(Scan_Date), MONTHNAME(Scan_Date)
+      AND YEAR(scan_date) = YEAR(CURDATE())
+    GROUP BY MONTH(scan_date), MONTHNAME(scan_date)
     ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $monthlyPeakMonth = $row['v'];
 
 $res = mysqli_query($conn, "
-    SELECT d.code AS v, COUNT(l.Log_ID) AS cnt
+    SELECT d.code AS v, COUNT(l.log_id) AS cnt
     FROM entry_logs l
-    JOIN students s ON l.Student_Number = s.Student_Number
-    JOIN programs p ON s.Program = p.code
+    JOIN students s ON l.student_number = s.student_number
+    JOIN programs p ON s.program_id = p.id
     JOIN departments d ON p.department_id = d.id
     WHERE l.admin_id = $admin_id
-      AND YEAR(l.Scan_Date) = YEAR(CURDATE())
+      AND YEAR(l.scan_date) = YEAR(CURDATE())
     GROUP BY d.id ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $monthlyTopDepartment = $row['v'] ?? "None";
 
 $res = mysqli_query($conn, "
-    SELECT p.code AS v, COUNT(l.Log_ID) AS cnt
+    SELECT p.code AS v, COUNT(l.log_id) AS cnt
     FROM entry_logs l
-    JOIN students s ON l.Student_Number = s.Student_Number
-    JOIN programs p ON s.Program = p.code
+    JOIN students s ON l.student_number = s.student_number
+    JOIN programs p ON s.program_id = p.id
     WHERE l.admin_id = $admin_id
-      AND YEAR(l.Scan_Date) = YEAR(CURDATE())
+      AND YEAR(l.scan_date) = YEAR(CURDATE())
     GROUP BY p.id ORDER BY cnt DESC LIMIT 1");
 if ($res && $row = mysqli_fetch_assoc($res)) $monthlyTopCourse = $row['v'] ?? "None";
 
