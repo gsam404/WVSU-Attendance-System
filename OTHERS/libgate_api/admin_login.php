@@ -23,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     $stmt = $conn->prepare(
-        "SELECT a.id, a.full_name, a.email, a.password_hash, a.role, c.name AS campus
+        "SELECT a.id, a.full_name, a.email, a.password_hash, a.role,
+                c.id AS campus_id, c.name AS campus
          FROM admins a
          LEFT JOIN campuses c ON a.campus_id = c.id
          WHERE a.email = ?"
@@ -43,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 "full_name"   => $row['full_name'],
                 "email"       => $row['email'],
                 "role"        => $row['role'],
-                "campus" => $row['campus']
+                "campus_id"   => $row['campus_id'] !== null ? (int)$row['campus_id'] : null,
+                "campus"      => $row['campus']
             ]);
         } else {
             echo json_encode(["success" => false, "message" => "Incorrect password"]);

@@ -1,34 +1,34 @@
 class Student {
   final String studentId;
-  final String firstName;
   final String lastName;
+  final String firstName;
   final String middleName;
   final String program;
   final String year;
   final String section;
-  final String birthDate;
-  final String birthPlace;
-  final String gender;
   final String email;
 
-  const Student({
+  Student({
     required this.studentId,
-    required this.firstName,
     required this.lastName,
+    required this.firstName,
     required this.middleName,
     required this.program,
     required this.year,
     required this.section,
-    required this.birthDate,
-    required this.birthPlace,
-    required this.gender,
     required this.email,
   });
 
-  String get fullName {
-    if (middleName.trim().isEmpty) {
-      return "$lastName, $firstName";
-    }
-    return "$lastName, $firstName $middleName";
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      studentId: json['student_number']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? '',
+      middleName: json['middle_name']?.toString() ?? '',
+      program: json['program']?.toString() ?? '',
+      year: json['year_level']?.toString() ?? '',
+      section: json['section']?.toString() ?? '',
+      email: json['email_address']?.toString() ?? '',
+    );
   }
 }

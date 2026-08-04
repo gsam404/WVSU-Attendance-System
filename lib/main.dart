@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'services/api_service.dart';
 import 'pages/attendance_portal_page.dart';
 
 void main() {
@@ -25,7 +28,6 @@ class NoTransitionRoute<T> extends MaterialPageRoute<T> {
   ) =>
       child;
 }
-
 
 // CUSTOM PAGE TRANSITIONS BUILDER
 class NoTransitionPageTransitionsBuilder extends PageTransitionsBuilder {
@@ -69,7 +71,10 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      // Initial page to the Student-Admin Portal
+      // Initial page is the Student-Admin Portal (imported from pages/attendance_portal_page.dart)
+      // NOTE: AttendancePortal is defined in pages/attendance_portal_page.dart.
+      // Do NOT redefine a class named AttendancePortal in this file — it will
+      // collide with the imported one and fail to compile.
       home: const AttendancePortal(),
     );
   } // Widget build
@@ -78,140 +83,12 @@ class MyApp extends StatelessWidget {
 /* ---------------------------------------------------------
       MAIN ATTENDANCE PORTAL PAGE (SELECTION SCREEN)
 ------------------------------------------------------------*/
-class AttendancePortal extends StatelessWidget {
-  const AttendancePortal({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/blue_bg.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/wvsu_logo.png', width: 130),
-                const SizedBox(height: 30),
-                const Text(
-                  'WVSU Library Attendance',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 52,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 60),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildPortalCard(
-                      context: context,
-                      icon: Icons.person,
-                      title: "Student Portal",
-                      subtitle: "Display student info for sign in and sign out",
-                      buttonText: "Go to student check-in →",
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          NoTransitionRoute(
-                              builder: (context) => const StudentCheckInPage()),
-                        ); // Navigate to StudentCheckInPage when Student button is pressed
-                      }, // Student button that navigates to StudentCheckInPage (which is the scanner page)
-                    ), // Student card
-                    const SizedBox(width: 50),
-                    _buildPortalCard(
-                      context: context,
-                      icon: Icons.shield,
-                      title: "Admin Portal",
-                      subtitle: "Access administrative tools and analytics",
-                      buttonText: "Login as Admin →",
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          NoTransitionRoute(
-                              builder: (context) => const AdminLoginPage()),
-                        ); // Navigate to AdminLoginPage when Admin button is pressed
-                      }, // Admin button that navigates to AdminLoginPage (which is the admin login screen)
-                    ), // Admin card
-                  ], // Children of Row
-                ),
-              ], //Children of Column
-            ),
-          ),
-        ),
-      ),
-    );
-  } // Widget build ---------------------------------------
-
-/* ---------------------------------------------------------
-   HELPER METHOD TO BUILD THE PORTAL CARDS (STUDENT AND ADMIN)
-------------------------------------------------------------*/
-  static Widget _buildPortalCard({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String buttonText,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(242),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-              color: Colors.black26, blurRadius: 25, offset: Offset(0, 15)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 60, color: const Color(0xFF1A237E)),
-          const SizedBox(height: 20),
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Colors.black54)),
-          const SizedBox(height: 25),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 51, 133, 210),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: Text(
-                buttonText,
-                style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ], // Children of Column
-      ),
-    );
-  } // Helper method to build the portal cards (Student and Admin)
-} //  End of AttendancePortal ------------------------------------------
+// REMOVED: The AttendancePortal widget used to be defined here, but it is
+// now imported from pages/attendance_portal_page.dart (see import above).
+// Keeping both would cause: "The name 'AttendancePortal' is already defined."
+// If your pages/attendance_portal_page.dart file does NOT actually contain
+// an AttendancePortal class yet, let me know and I'll move this widget's
+// code back into that file for you.
 
 /* ---------------------------------------------------------
             Student Check-In Page (Scanner Page)
@@ -244,7 +121,8 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
   Future<void> _handleBarcodeScan(String barcode) async {
     if (barcode.trim().isEmpty) return;
 
-// RECHECK: This is where we check if the library is closed before we even call the API. If it's closed, we show a message and stop execution here.
+    // RECHECK: This is where we check if the library is closed before we even call the API.
+    // If it's closed, we show a message and stop execution here.
     // --- TIME CHECK IN THE SCANNER ---
     if (isLibraryClosed()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -349,7 +227,7 @@ class _StudentCheckInPageState extends State<StudentCheckInPage> {
               ),
             ),
 
-/* _________________________________________________________________________________________
+            /* _________________________________________________________________________________________
         Student Check-In UI (Visible to users, but scanner input is hidden and auto-focused)
 _____________________________________________________________________________________________*/
             Container(
@@ -457,7 +335,8 @@ ________________________________________________________________________________
 } // End of StudentCheckInPage ------------------------------------------
 
 // FEAT: Check if library is closed based on current time (6 PM to 7 AM)
-// commented out the actual time check for testing purposes, but this is where you would implement it. Adjust the hours as needed based on the library's actual operating hours.
+// commented out the actual time check for testing purposes, but this is where you would implement it.
+// Adjust the hours as needed based on the library's actual operating hours.
 bool isLibraryClosed() {
   final now = DateTime.now();
   // Returns true if it's 6 PM (18) or later, OR before 7 AM
@@ -719,18 +598,26 @@ class StudentDisplaySignInPage extends StatefulWidget {
       _StudentDisplaySignInPageState();
 }
 
-// Timer logic is implemented here to automatically return to the scanner page after 4 seconds.
+// Timer logic is implemented here to automatically return to the scanner page after a couple seconds.
 // The current time is also calculated and displayed on this page based on the time of the sign-in or sign-out action.
 // The UI changes dynamically based on whether the student is logging in or out, showing different icons, messages, and status text accordingly.
 class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    _timer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -747,7 +634,7 @@ class _StudentDisplaySignInPageState extends State<StudentDisplaySignInPage> {
     bool isLoggingIn = widget.action == "In";
 
     // Design the UI to show student info and whether they are logging in or out, along with the time of the action.
-    // After 4 seconds, it will automatically return to the scanner page.
+    // After a couple seconds, it will automatically return to the scanner page.
     return Scaffold(
       body: Container(
         width: double.infinity,

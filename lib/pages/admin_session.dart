@@ -26,8 +26,7 @@ class AdminSession {
     role = adminRole;
     profilePicUrl = picUrl;
     campusId = adminCampusId;
-    campusName = adminCampusName;
-    campusName = '';
+    campusName = adminCampusName; // FIX: removed the stray line that reset this to ''
   }
 
   /// Clear session on logout

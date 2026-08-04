@@ -48,6 +48,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         AdminSession.email = data['email'] ?? '';
         AdminSession.name = data['full_name'] ?? '';
         AdminSession.campusName = data['campus'] ?? '';
+        AdminSession.campusId = data['campus_id'] != null
+            ? int.tryParse(data['campus_id'].toString())
+            : null;
 
         if (!mounted) return;
         // Remove the public portal route after login so browser back/trackpad

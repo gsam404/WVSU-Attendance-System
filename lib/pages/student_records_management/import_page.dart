@@ -1155,7 +1155,7 @@ class _ImportPageState extends State<ImportPage> {
                 _buildLazyPreviewTable(),
                 const SizedBox(height: 10),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.center,
                   child: _buildPageArrows(
                     page: _previewPage,
                     pageCount: _pageCount(_filteredPreviewRows.length),
