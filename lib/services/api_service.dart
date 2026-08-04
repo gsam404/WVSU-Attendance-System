@@ -7,10 +7,10 @@ class ApiService {
   // Use your local IP address for physical devices/Web
   // Use 10.0.2.2 for Android Emulator (the emulator maps this to your host machine's localhost)
   final String baseUrl = kIsWeb
-      ? 'http://192.168.1.72/libgate_api'
+      ? 'http://192.168.1.77/libgate_api'
       : Platform.isAndroid
-          ? 'http://192.168.1.72/libgate_api' // change to 'http://10.0.2.2/libgate_api' if testing on an emulator
-          : 'http://192.168.1.72/libgate_api';
+          ? 'http://192.168.1.77/libgate_api' // change to 'http://10.0.2.2/libgate_api' if testing on an emulator
+          : 'http://192.168.1.77/libgate_api';
 
   // --- 1. SCAN STUDENT ID (For the Scanner/Entry Gate) ---
   Future<Map<String, dynamic>?> scanStudentID(String scannedId) async {
