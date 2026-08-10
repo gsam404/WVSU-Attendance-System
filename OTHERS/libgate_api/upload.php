@@ -1,8 +1,5 @@
 <?php
-/**
- * LIBGATE Student Import API
- * Version 2
- */
+
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -26,6 +23,8 @@ if ($conn->connect_error) {
         "message" => "Database connection failed."
     ]));
 }
+
+include 'school_year_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     die(json_encode([
@@ -261,7 +260,7 @@ foreach ($aliases as $databaseField => $possibleHeaders)
             break;
         }
     }
-} // <-- ADD THIS
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -649,6 +648,34 @@ if (!empty($missingFields)) {
 
 /*
 |--------------------------------------------------------------------------
+| ENSURE CURRENT SCHOOL YEAR EXISTS (does NOT rotate/close anything)
+|--------------------------------------------------------------------------
+| Student import has no bearing on academic-year boundaries, so this no
+| longer creates a brand-new "next" school year every time someone
+| imports a CSV. It just guarantees that the school_years row for
+| *today's* date/campus exists, via the same helper scan.php uses, so
+| the Attendance dropdown always has at least the current year to show
+| even before the first scan of the term comes in.
+|--------------------------------------------------------------------------
+*/
+
+$currentSchoolYearName = null;
+$currentSchoolYearId = null;
+$schoolYearDebugError = null;
+
+try {
+    $sy = getOrCreateSchoolYear($conn, $campus_id, date('Y-m-d'));
+    if ($sy !== null) {
+        $currentSchoolYearName = $sy['name'];
+        $currentSchoolYearId = $sy['id'];
+    }
+} catch (mysqli_sql_exception $e) {
+    error_log("School year lookup failed during import: " . $e->getMessage());
+    $schoolYearDebugError = $e->getMessage();
+}
+
+/*
+|--------------------------------------------------------------------------
 | CLEAN UP
 |--------------------------------------------------------------------------
 */
@@ -683,7 +710,11 @@ echo json_encode([
     "campus_id" => $campus_id,
     "campus_name" => $campus_name,
     "admin_id" => $admin_id,
-    "timestamp" => date("Y-m-d H:i:s")
+    "timestamp" => date("Y-m-d H:i:s"),
+
+    "school_year" => $currentSchoolYearName,
+    "school_year_id" => $currentSchoolYearId,
+    "school_year_debug_error" => $schoolYearDebugError
 
 ],
 
@@ -692,4 +723,3 @@ echo json_encode([
 ]);
 
 ?>
-    

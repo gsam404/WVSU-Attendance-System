@@ -47,22 +47,21 @@ try {
     // ===============================
     // APPLY FILTERS
     // ===============================
-    
-    // 2. THE CHEF CALCULATES THE SCHOOL YEAR (Aug 1 to July 31)
+
+    // FIX: filter by the actual school_years row (via the join above),
+    // not a recomputed date range. entry_logs.school_year_id is already
+    // the source of truth — it's set once, at scan time, by
+    // school_year_helper.php's getOrCreateSchoolYear(). Recomputing a
+    // separate Aug 1 - Jul 31 window here used a DIFFERENT definition of
+    // "school year" than the one entries were actually tagged with,
+    // which could pull entries from the wrong year into a report (or
+    // exclude entries that do belong). Always match on the same id/name
+    // that was stored on the row.
     if ($school_year_id > 0) {
         $query .= " AND l.school_year_id = $school_year_id";
     } elseif ($school_year && $school_year !== 'All Years') {
-        if (preg_match('/^\d{4}-\d{4}$/', $school_year)) {
-            $years = explode("-", $school_year);
-            if (count($years) == 2) {
-                $start_date = $years[0] . "-08-01";
-                $end_date = $years[1] . "-07-31";
-                $query .= " AND DATE(l.scan_date) >= '$start_date' AND DATE(l.scan_date) <= '$end_date'";
-            }
-        } else {
-            $school_year_safe = $conn->real_escape_string($school_year);
-            $query      .= " AND sy.name = '$school_year_safe'";
-        }
+        $school_year_safe = $conn->real_escape_string($school_year);
+        $query .= " AND sy.name = '$school_year_safe'";
     }
 
     if ($date && !$school_year && !$month && $school_year_id === 0) { // Only use exact date if SY or Month aren't selected

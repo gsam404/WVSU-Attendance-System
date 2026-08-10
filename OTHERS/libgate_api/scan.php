@@ -9,8 +9,9 @@ ini_set('display_errors', 0);
 date_default_timezone_set('Asia/Manila');
 
 include 'db_connect.php';
+include 'school_year_helper.php';
 
-// admin_id is now OPTIONAL — if not sent, scans across all students
+// admin_id is optional — if not sent, scans across all students
 $admin_id   = intval($_POST['admin_id'] ?? 0);
 $scanned_id = strtoupper(trim($_POST['scanned_id'] ?? ''));
 
@@ -21,25 +22,12 @@ if (empty($scanned_id)) {
 
 $current_time = date("H:i:s");
 $current_date = date("Y-m-d");
-$school_year_id = null;
 
 try {
     $conn->query("SET time_zone = '+08:00'");
 
-    $sy_stmt = $conn->prepare("SELECT id FROM school_years WHERE ? BETWEEN start_date AND end_date LIMIT 1");
-    if ($sy_stmt) {
-        $sy_stmt->bind_param("s", $current_date);
-        $sy_stmt->execute();
-        $sy_res = $sy_stmt->get_result();
-        if ($sy_res && $sy_row = $sy_res->fetch_assoc()) {
-            $school_year_id = intval($sy_row['id']);
-        }
-        $sy_stmt->close();
-    }
-
     // 1. AUTO-LOGOUT LOGIC
     if ($admin_id > 0) {
-        // Scoped to this admin only
         $conn->query("UPDATE entry_logs 
                       SET time_out = '18:00:00', 
                           status = 'Auto-Logged-Out',
@@ -48,7 +36,6 @@ try {
                         AND time_out IS NULL 
                         AND (scan_date < CURDATE() OR (scan_date = CURDATE() AND CURTIME() > '18:00:00'))");
     } else {
-        // No admin scope — apply to all
         $conn->query("UPDATE entry_logs 
                       SET time_out = '18:00:00', 
                           status = 'Auto-Logged-Out',
@@ -57,10 +44,12 @@ try {
                         AND (scan_date < CURDATE() OR (scan_date = CURDATE() AND CURTIME() > '18:00:00'))");
     }
 
-    // 2. GET STUDENT INFO
+    // 2. GET STUDENT INFO (also pulls campus_id so we can resolve the
+    //    correct school year — a scan can come in admin-unscoped, so we
+    //    can't know the campus until we know which student this is)
     if ($admin_id > 0) {
-        // Scoped: only students belonging to this admin
-        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, COALESCE(p.code, 'No Program') AS program, s.admin_id
+        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, s.campus_id,
+                                       COALESCE(p.code, 'No Program') AS program, s.admin_id
                                 FROM students s
                                 LEFT JOIN programs p ON s.program_id = p.id
                                 WHERE TRIM(s.student_number) = ? AND s.admin_id = ?
@@ -68,8 +57,8 @@ try {
         if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
         $stmt->bind_param("si", $scanned_id, $admin_id);
     } else {
-        // No admin scope — search all students
-        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, COALESCE(p.code, 'No Program') AS program, s.admin_id
+        $stmt = $conn->prepare("SELECT s.student_number, s.first_name, s.last_name, s.campus_id,
+                                       COALESCE(p.code, 'No Program') AS program, s.admin_id
                                 FROM students s
                                 LEFT JOIN programs p ON s.program_id = p.id
                                 WHERE TRIM(s.student_number) = ?
@@ -91,7 +80,18 @@ try {
     $full_name      = $student['first_name'] . " " . $student['last_name'];
     $program        = $student['program'] ?? 'No Program';
     $resolved_admin = $student['admin_id']; // Use the student's own admin_id for logs
+    $campus_id      = (int) $student['campus_id'];
 
+    // 2b. RESOLVE (OR CREATE) TODAY'S SCHOOL YEAR FOR THIS STUDENT'S CAMPUS
+    // This is what actually tags entry_logs correctly — previously this
+    // ran BEFORE we knew the campus and used a query that could never
+    // match a still-open (NULL end_date) year, so school_year_id was
+    // always NULL.
+    $school_year_id = null;
+    $sy = getOrCreateSchoolYear($conn, $campus_id, $current_date);
+    if ($sy !== null) {
+        $school_year_id = $sy['id'];
+    }
 
     // 3. CHECK FOR OPEN SESSION
     $check_stmt = $conn->prepare("SELECT log_id, time_in FROM entry_logs 

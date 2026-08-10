@@ -380,8 +380,16 @@ class _ImportPageState extends State<ImportPage> {
         ),
       );
 
+      // ── DEBUG: log exactly what we're about to send ──────────────────────
+      print("UPLOAD REQUEST -> $uri");
+      print("UPLOAD REQUEST admin_id -> ${AdminSession.id}");
+      print("UPLOAD REQUEST filename -> $uploadName");
+
       final streamed = await request.send();
       final responseBody = await streamed.stream.bytesToString();
+
+      // ── DEBUG: log the raw server response ────────────────────────────────
+      print("UPLOAD RESPONSE (status ${streamed.statusCode}) -> $responseBody");
 
       final result = json.decode(responseBody);
 

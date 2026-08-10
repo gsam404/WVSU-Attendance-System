@@ -48,8 +48,10 @@ class _AttendancePageState extends State<AttendancePage> {
   List<String> _programs = ['All Programs'];
   List<String> _departments = ['All Departments'];
 
-  // The dynamic list that users can now manually add to!
+  // Populated from the backend (school_years table, scoped to this admin's
+  // campus). Purely automatic — no manual "add custom year" option.
   final List<String> _schoolYears = [];
+  bool _isLoadingSchoolYears = false;
 
   List<Map<String, dynamic>> _attendanceData = [];
   String _searchQuery = '';
@@ -61,12 +63,12 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Timer? _pollTimer;
 
-  static const String _base = ApiConfig.attendance;
+  static const String _base = ApiConfig.baseUrl;
 
   @override
   void initState() {
     super.initState();
-    _generateInitialSchoolYears();
+    _fetchSchoolYears();
     _fetchAcademicFilters();
     _fetchAttendance();
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
@@ -87,73 +89,69 @@ class _AttendancePageState extends State<AttendancePage> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // ── GENERATE DEFAULT YEARS + "ADD CUSTOM YEAR" BUTTON ──────────────────────
-  void _generateInitialSchoolYears() {
-    int currentYear = DateTime.now().year;
-    int baseYear = 2025;
+  // ── FETCH SCHOOL YEARS FROM THE DATABASE ────────────────────────────────
+  // Pulls the campus-scoped school_years rows created automatically by the
+  // import/scan process (e.g. 2026-2027), most recent first. Purely
+  // automatic — no manual add option.
+  //
+  // FIX: this used to only run once, in initState(). If the sidebar keeps
+  // this page's state alive (e.g. an IndexedStack), a school year created
+  // by a later import would never show up until a full app restart, since
+  // initState() never re-ran. Now this is also called every time the user
+  // opens the "School Year" filter (see _buildFilterBar below), so it
+  // always reflects the latest import/scan.
+  Future<void> _fetchSchoolYears() async {
+    if (mounted) setState(() => _isLoadingSchoolYears = true);
 
+    final url = '$_base/get_school_years.php?admin_id=${AdminSession.id}';
+    print("SCHOOL YEARS REQUEST -> $url");
+
+    try {
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+
+      print("SCHOOL YEARS RESPONSE (status ${res.statusCode}) -> ${res.body}");
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['status'] == 'success') {
+          final years = List<String>.from(data['data'] ?? []);
+          print("SCHOOL YEARS PARSED -> $years");
+          if (mounted) {
+            setState(() {
+              _schoolYears
+                ..clear()
+                ..addAll(years);
+            });
+          }
+          return;
+        } else {
+          print("SCHOOL YEARS: status was not 'success' -> ${data['status']} / ${data['message']}");
+        }
+      }
+    } catch (e) {
+      print("SCHOOL YEARS ERROR -> $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingSchoolYears = false);
+    }
+
+    // Fallback: fetch failed — leave the list empty. It will populate on
+    // the next successful import/refresh.
     if (mounted) {
       setState(() {
         _schoolYears.clear();
-        for (int y = currentYear + 1; y >= baseYear; y--) {
-          _schoolYears.add("$y-${y + 1}");
-        }
-        // This is the magic button that lets users manually type any year!
-        _schoolYears.add("+ Add Custom Year");
       });
     }
   }
 
-  // ── MANUAL YEAR POPUP ──────────────────────────────────────────────────────
-  void _showAddYearDialog() {
-    final TextEditingController yearCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Manually Add School Year',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: TextField(
-          controller: yearCtrl,
-          decoration: InputDecoration(
-            hintText: 'e.g. 2030-2031',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            filled: true,
-            fillColor: Colors.grey.shade100,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-            onPressed: () {
-              final newYear = yearCtrl.text.trim();
-              if (newYear.isNotEmpty) {
-                setState(() {
-                  // Add their manual year to the very top of the list
-                  _schoolYears.insert(0, newYear);
-                  _selectedFilterValue = newYear; // Select it instantly
-                });
-                _fetchAttendance(); // Fetch data for their custom year
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Add & Apply',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _fetchAcademicFilters() async {
+    final url = '$_base/academic_api.php?action=fetch&admin_id=${AdminSession.id}';
+    print("ACADEMIC FILTERS REQUEST -> $url");
+
     try {
-      final res = await http
-          .get(Uri.parse(
-              '$_base/academic_api.php?action=fetch&admin_id=${AdminSession.id}'))
-          .timeout(const Duration(seconds: 6));
+      final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+
+      print("ACADEMIC FILTERS RESPONSE (status ${res.statusCode}) -> ${res.body}");
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['status'] == 'success') {
@@ -161,19 +159,24 @@ class _AttendancePageState extends State<AttendancePage> {
           final progs = ['All Programs'];
           for (var d in data['data']) {
             depts.add(d['code']);
-            for (var c in (d['courses'] ?? [])) {
+            for (var c in (d['programs'] ?? [])) {
               progs.add(c['code']);
             }
           }
+          print("ACADEMIC FILTERS PARSED -> depts=$depts, progs=$progs");
           if (mounted) {
             setState(() {
               _departments = depts;
               _programs = progs;
             });
           }
+        } else {
+          print("ACADEMIC FILTERS: status was not 'success' -> ${data['status']} / ${data['message']}");
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print("ACADEMIC FILTERS ERROR -> $e");
+    }
   }
 
   Future<void> _fetchAttendance() async {
@@ -202,7 +205,7 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     try {
-      final uri = Uri.parse('$_base/get_attendance.php')
+      final uri = Uri.parse(ApiConfig.attendance)
           .replace(queryParameters: params);
       final res = await http.get(uri).timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
@@ -761,22 +764,37 @@ class _AttendancePageState extends State<AttendancePage> {
               _selectedFilterCategory = val;
               _selectedFilterValue = null;
             });
-            if (val == null) _fetchAttendance();
+            if (val == null) {
+              _fetchAttendance();
+            } else if (val == 'School Year') {
+              // FIX: always pull a fresh list from the server the moment the
+              // user opens this filter — a recent import/scan may have
+              // added a new school year that initState() never saw.
+              _fetchSchoolYears();
+            } else if (val == 'Program' || val == 'Department') {
+              // FIX: same issue as School Year — these only loaded once in
+              // initState(). If that one call failed (e.g. ran before the
+              // session was fully ready) they'd stay empty for the rest of
+              // the session with no way to recover. Now every time either
+              // filter is opened, we pull a fresh copy.
+              _fetchAcademicFilters();
+            }
           },
         ),
-        if (_selectedFilterCategory != null)
+        if (_selectedFilterCategory == 'School Year' && _isLoadingSchoolYears)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else if (_selectedFilterCategory != null)
           _buildDropdown(
             hint: 'Select $_selectedFilterCategory',
             value: _selectedFilterValue,
             items: _getChoicesForCategory(_selectedFilterCategory!),
             onChanged: (val) {
-              // ── MAGIC HAPPENS HERE: If they pick "Add Custom Year", show the popup! ──
-              if (val == '+ Add Custom Year') {
-                _showAddYearDialog();
-              } else {
-                setState(() => _selectedFilterValue = val);
-                if (val != null) _fetchAttendance();
-              }
+              setState(() => _selectedFilterValue = val);
+              if (val != null) _fetchAttendance();
             },
           ),
         if (_selectedFilterCategory != null)
